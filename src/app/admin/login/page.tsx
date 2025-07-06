@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -68,7 +69,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center bg-muted/50 p-4">
+    <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center gap-4 bg-muted/50 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-headline">Admin Login</CardTitle>
@@ -125,6 +126,12 @@ export default function LoginPage() {
           </p>
         </CardContent>
       </Card>
+      <Button asChild variant="outline" className="w-full max-w-sm">
+        <Link href="/">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Site
+        </Link>
+      </Button>
     </div>
   );
 }
