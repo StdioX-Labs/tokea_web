@@ -77,15 +77,17 @@ export async function getEvents(): Promise<Event[]> {
 }
 
 /**
- * Fetches a single event by its ID, including detailed ticket info.
+ * Fetches a single event by its ID.
+ * This is implemented by fetching all events and finding the matching one.
+ * For large datasets, a dedicated API endpoint `/events/get/{id}` would be more performant.
  */
 export async function getEventById(id: string): Promise<Event | null> {
   try {
-    const response = await apiClient<{ event: ApiEvent }>(`/events/get/${id}`);
-    if (!response.event) return null;
-    return transformApiEventToEvent(response.event);
+    const allEvents = await getEvents();
+    const event = allEvents.find((e) => e.id === id);
+    return event || null;
   } catch (error) {
-    console.error(`Error fetching event ${id}:`, error);
+    console.error(`Error fetching event by id ${id}:`, error);
     return null;
   }
 }
