@@ -72,7 +72,7 @@ export default function Home() {
     fetchEvents();
   }, []);
 
-  const featuredEvents = allEvents.filter((event) => event.isFeatured);
+  const featuredEvents = allEvents.filter((event) => event.isFeatured).slice(0, 3);
   const upcomingEvents = allEvents;
 
   const titleWords = [
