@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import EventCard from '@/components/event-card';
 import {
   Carousel,
@@ -8,15 +9,69 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
-import { events } from '@/lib/events';
+import { getEvents } from '@/services/event-service';
+import type { Event } from '@/lib/types';
 import Link from 'next/link';
 import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { motion } from 'framer-motion';
 import { ShimmerButton } from '@/components/ui/shimmer-button';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function EventCarouselSkeleton() {
+  return (
+    <div className="flex space-x-4">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="min-w-0 shrink-0 grow-0 basis-full md:basis-1/2 lg:basis-1/3 p-1">
+          <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+          <div className="p-4 space-y-2">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function EventGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+       {[...Array(8)].map((_, i) => (
+        <div key={i}>
+          <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+          <div className="p-4 space-y-2">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 
 export default function Home() {
-  const featuredEvents = events.filter((event) => event.isFeatured);
-  const upcomingEvents = events;
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const events = await getEvents();
+        setAllEvents(events);
+      } catch (error) {
+        console.error("Failed to fetch events", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchEvents();
+  }, []);
+
+  const featuredEvents = allEvents.filter((event) => event.isFeatured);
+  const upcomingEvents = allEvents;
 
   const titleWords = [
     { text: 'Experience' },
@@ -63,28 +118,30 @@ export default function Home() {
           <h2 className="text-3xl font-bold tracking-tighter font-headline mb-8">
             Featured Events
           </h2>
-          <Carousel
-            opts={{
-              align: 'start',
-              loop: true,
-            }}
-            className="w-full"
-          >
-            <CarouselContent>
-              {featuredEvents.map((event) => (
-                <CarouselItem
-                  key={event.id}
-                  className="md:basis-1/2 lg:basis-1/3"
-                >
-                  <div className="p-1">
-                    <EventCard event={event} />
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
-          </Carousel>
+          {isLoading ? <EventCarouselSkeleton /> : (
+            <Carousel
+              opts={{
+                align: 'start',
+                loop: featuredEvents.length > 2,
+              }}
+              className="w-full"
+            >
+              <CarouselContent>
+                {featuredEvents.map((event) => (
+                  <CarouselItem
+                    key={event.id}
+                    className="md:basis-1/2 lg:basis-1/3"
+                  >
+                    <div className="p-1">
+                      <EventCard event={event} />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
+            </Carousel>
+          )}
         </div>
       </section>
 
@@ -97,11 +154,13 @@ export default function Home() {
           <h2 className="text-3xl font-bold tracking-tighter font-headline mb-8">
             All Upcoming Events
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {upcomingEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
+           {isLoading ? <EventGridSkeleton /> : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {upcomingEvents.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>
