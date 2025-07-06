@@ -5,12 +5,12 @@ import type { Event, TicketType } from '@/lib/types';
 interface ApiTicketType {
   id: number;
   ticketName: string;
-  ticketPrice: string;
+  ticketPrice: number;
   quantityAvailable: number;
   ticketsToIssue: number;
   ticketLimitPerPerson: number;
-  saleStartDate: string;
-  saleEndDate: string;
+  ticketSaleStartDate: string;
+  ticketSaleEndDate: string;
   isActive: boolean;
 }
 
@@ -22,11 +22,9 @@ interface ApiEvent {
   eventLocation: string;
   eventPosterUrl: string;
   eventDescription: string;
-  eventVenueName: string;
-  eventVenueAddress: string;
-  eventVenueCapacity: number;
-  isFeatured: number; // 0 or 1
+  isFeatured: boolean;
   tickets: ApiTicketType[];
+  category: string;
 }
 
 // Transformer functions to convert API data into our app's data types
@@ -34,17 +32,19 @@ function transformApiTicketTypeToTicketType(apiTicket: ApiTicketType): TicketTyp
   return {
     id: String(apiTicket.id),
     name: apiTicket.ticketName,
-    price: parseFloat(apiTicket.ticketPrice) || 0,
+    price: apiTicket.ticketPrice || 0,
     quantityAvailable: apiTicket.quantityAvailable,
     ticketsToIssue: apiTicket.ticketsToIssue,
     ticketLimitPerPerson: apiTicket.ticketLimitPerPerson,
-    saleStartDate: apiTicket.saleStartDate,
-    saleEndDate: apiTicket.saleEndDate,
+    saleStartDate: apiTicket.ticketSaleStartDate,
+    saleEndDate: apiTicket.ticketSaleEndDate,
     status: apiTicket.isActive ? 'active' : 'disabled',
   };
 }
 
 function transformApiEventToEvent(apiEvent: ApiEvent): Event {
+  const posterHint = apiEvent.category?.toLowerCase().replace(/&/g, '').split(/\s+/).slice(0, 2).join(' ') || 'event poster';
+
   return {
     id: String(apiEvent.id),
     name: apiEvent.eventName,
@@ -52,14 +52,14 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
     endDate: apiEvent.eventEndDate || undefined,
     location: apiEvent.eventLocation,
     posterImage: apiEvent.eventPosterUrl,
-    posterImageHint: 'event poster', // Default value
+    posterImageHint: posterHint,
     description: apiEvent.eventDescription,
-    isFeatured: apiEvent.isFeatured === 1,
+    isFeatured: apiEvent.isFeatured,
     artists: [], // API doesn't have this, use default
     venue: {
-      name: apiEvent.eventVenueName,
-      address: apiEvent.eventVenueAddress,
-      capacity: apiEvent.eventVenueCapacity,
+      name: apiEvent.eventLocation,
+      address: '',
+      capacity: 0,
     },
     ticketTypes: apiEvent.tickets?.map(transformApiTicketTypeToTicketType) || [],
     promotions: [], // API doesn't have this, use default
@@ -70,8 +70,8 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
  * Fetches all events from the API.
  */
 export async function getEvents(): Promise<Event[]> {
-  const response = await apiClient<{ data: ApiEvent[] }>('/events/get/all');
-  return response.data.map(transformApiEventToEvent);
+  const response = await apiClient<{ events: ApiEvent[] }>('/events/get/all');
+  return response.events.map(transformApiEventToEvent);
 }
 
 /**
@@ -79,9 +79,9 @@ export async function getEvents(): Promise<Event[]> {
  */
 export async function getEventById(id: string): Promise<Event | null> {
   try {
-    const response = await apiClient<{ data: ApiEvent }>(`/events/get/${id}`);
-    if (!response.data) return null;
-    return transformApiEventToEvent(response.data);
+    const response = await apiClient<{ event: ApiEvent }>(`/events/get/${id}`);
+    if (!response.event) return null;
+    return transformApiEventToEvent(response.event);
   } catch (error) {
     console.error(`Error fetching event ${id}:`, error);
     return null;
