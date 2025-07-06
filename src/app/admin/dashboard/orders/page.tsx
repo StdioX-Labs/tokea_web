@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input"
-import { DatePicker } from "@/components/ui/date-picker"
 import { Button } from "@/components/ui/button"
 import { Search, FileDown } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { type DateRange } from 'react-day-picker';
 
 const mockTransactions = [
     { id: 'TRN-001', orderId: 'SUMMER-12345', customer: 'Jane Doe', date: '2024-07-20', total: 150.00, status: 'Completed' },
@@ -17,7 +18,8 @@ const mockTransactions = [
 ]
 
 export default function TransactionsPage() {
-    const [date, setDate] = useState<Date | undefined>();
+    const [date, setDate] = useState<DateRange | undefined>();
+    const [searchQuery, setSearchQuery] = useState('');
 
     return (
         <div className="p-4 md:p-8">
@@ -33,9 +35,14 @@ export default function TransactionsPage() {
                     <div className="flex flex-col sm:flex-row gap-4 mb-6">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input placeholder="Search by Order ID or Transaction Ref..." className="pl-10" />
+                            <Input 
+                                placeholder="Search by Order ID or Transaction Ref..." 
+                                className="pl-10"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                             />
                         </div>
-                        <DatePicker date={date} setDate={setDate} placeholder="Filter by date" />
+                        <DateRangePicker date={date} setDate={setDate} placeholder="Filter by date range" />
                         <Button variant="outline">
                             <FileDown className="mr-2 h-4 w-4" />
                             Export
