@@ -1,6 +1,5 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Twitter, Instagram, Facebook } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,32 +18,7 @@ const SocialLink = ({ href, children }: { href: string; children: React.ReactNod
 )
 
 export default function Footer() {
-    const ref = useRef<HTMLElement>(null);
-    const [isInView, setIsInView] = useState(false);
     const pathname = usePathname();
-
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setIsInView(true);
-                    observer.disconnect();
-                }
-            },
-            { threshold: 0.1 }
-        );
-
-        const currentRef = ref.current;
-        if (currentRef) {
-            observer.observe(currentRef);
-        }
-
-        return () => {
-            if (currentRef) {
-                observer.unobserve(currentRef);
-            }
-        };
-    }, []);
 
     if (pathname.startsWith('/admin')) {
         return null;
@@ -52,11 +26,7 @@ export default function Footer() {
 
   return (
     <footer 
-        ref={ref} 
-        className={cn(
-            "w-full border-t bg-background transition-all duration-1000 ease-out",
-            isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-        )}
+        className={cn( "w-full border-t bg-background")}
     >
       <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-y-10 gap-x-8 py-20">
         <div className="flex flex-col gap-4 md:col-span-2">
