@@ -5,9 +5,12 @@ import { ShoppingCart, User, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/cart-provider';
 import CartSheet from './cart-sheet';
+import { useState } from 'react';
+import SearchDrawer from './search-drawer';
 
 export default function Header() {
   const { itemCount, setCartOpen } = useCart();
+  const [isSearchOpen, setSearchOpen] = useState(false);
 
   return (
     <>
@@ -19,7 +22,7 @@ export default function Header() {
             </span>
           </Link>
           <div className="flex flex-1 items-center justify-end space-x-2">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>
               <Search className="h-5 w-5" />
               <span className="sr-only">Search</span>
             </Button>
@@ -45,6 +48,7 @@ export default function Header() {
         </div>
       </header>
       <CartSheet />
+      <SearchDrawer isOpen={isSearchOpen} onOpenChange={setSearchOpen} />
     </>
   );
 }
