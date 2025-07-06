@@ -27,6 +27,12 @@ const nextConfig: NextConfig = {
         hostname: 'kong-c7447f26ccus2ngvp.kongcloud.dev',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
