@@ -4,10 +4,16 @@ export interface TicketType {
   price: number;
 }
 
+export interface EventCategory {
+  id: string;
+  name: string;
+}
+
 export interface Event {
   id: string;
   name: string;
-  date: string;
+  date: string; // Corresponds to eventStartDate
+  endDate?: string;
   location: string;
   posterImage: string;
   posterImageHint: string;
@@ -16,6 +22,9 @@ export interface Event {
   venue: { name: string; address: string; capacity: number };
   ticketTypes: TicketType[];
   isFeatured?: boolean;
+  category?: EventCategory;
+  ticketSaleStartDate?: string;
+  ticketSaleEndDate?: string;
 }
 
 export interface CartItem {
