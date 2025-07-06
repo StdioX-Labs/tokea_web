@@ -55,9 +55,10 @@ interface AddEventModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   event?: Event | null;
+  mode?: 'add' | 'edit' | 'view';
 }
 
-export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProps) {
+export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: AddEventModalProps) {
   const form = useForm<z.infer<typeof eventFormSchema>>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
@@ -68,6 +69,7 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
     },
   });
 
+  const isViewMode = mode === 'view';
   const posterUrl = form.watch('posterImage');
 
   useEffect(() => {
@@ -105,10 +107,12 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="font-headline">
-            {event ? 'Edit Event' : 'Add New Event'}
+            {mode === 'add' && 'Add New Event'}
+            {mode === 'edit' && 'Edit Event'}
+            {mode === 'view' && 'View Event'}
           </DialogTitle>
           <DialogDescription>
-            Fill in the details below. Click save when you're done.
+            {isViewMode ? 'Viewing event details.' : "Fill in the details below. Click save when you're done."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -122,7 +126,7 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
                     <FormItem>
                       <FormLabel>Event Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. Summer Solstice Fest" {...field} />
+                        <Input placeholder="e.g. Summer Solstice Fest" {...field} disabled={isViewMode} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -139,36 +143,40 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
                           placeholder="Tell us more about the event..."
                           className="resize-y min-h-[100px]"
                           {...field}
+                          disabled={isViewMode}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="posterImage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Event Poster</FormLabel>
-                      <FormControl>
-                        <div className="flex items-center gap-2">
-                           <Input placeholder="Click 'Upload' to set image URL" value={field.value} readOnly />
-                           <Button 
-                             type="button" 
-                             variant="outline"
-                             onClick={() => field.onChange(`https://placehold.co/800x1200.png?t=${Date.now()}`)}
-                            >
-                              <Upload className="mr-2 h-4 w-4" />
-                             Upload
-                           </Button>
-                         </div>
-                      </FormControl>
-                      <FormDescription>Simulates uploading a file and generating a URL.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {!isViewMode && (
+                  <FormField
+                    control={form.control}
+                    name="posterImage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Event Poster</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-2">
+                            <Input placeholder="Click 'Upload' to set image URL" value={field.value} readOnly disabled={isViewMode}/>
+                            <Button 
+                              type="button" 
+                              variant="outline"
+                              onClick={() => field.onChange(`https://placehold.co/800x1200.png?t=${Date.now()}`)}
+                              disabled={isViewMode}
+                              >
+                                <Upload className="mr-2 h-4 w-4" />
+                              Upload
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormDescription>Simulates uploading a file and generating a URL.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
               <div className="md:col-span-2">
                  <FormLabel>Poster Preview</FormLabel>
@@ -191,7 +199,7 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isViewMode}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select an event category" />
@@ -214,7 +222,7 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Green Meadows Park" {...field} />
+                      <Input placeholder="e.g. Green Meadows Park" {...field} disabled={isViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -234,6 +242,7 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
                             date={field.value}
                             setDate={field.onChange}
                             className="w-full"
+                             disabled={isViewMode}
                         />
                         </FormControl>
                         <FormMessage />
@@ -251,6 +260,7 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
                             date={field.value}
                             setDate={field.onChange}
                             className="w-full"
+                            disabled={isViewMode}
                         />
                         </FormControl>
                         <FormMessage />
@@ -262,10 +272,12 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
             <DialogFooter className="pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="outline">
-                  Cancel
+                  {isViewMode ? 'Close' : 'Cancel'}
                 </Button>
               </DialogClose>
-              <Button type="submit">Save Event</Button>
+              {!isViewMode && (
+                <Button type="submit">Save Event</Button>
+              )}
             </DialogFooter>
           </form>
         </Form>

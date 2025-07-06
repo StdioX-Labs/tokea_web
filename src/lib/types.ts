@@ -2,6 +2,14 @@ export interface TicketType {
   id: string;
   name: string;
   price: number;
+  quantityAvailable: number;
+  // ticketsToIssue is how many tickets are granted per purchase of this type. 1 for single, 2 for couple etc.
+  ticketsToIssue: number;
+  // 0 for unlimited
+  ticketLimitPerPerson: number;
+  saleStartDate: string;
+  saleEndDate: string;
+  status: 'active' | 'disabled';
 }
 
 export interface EventCategory {

@@ -21,8 +21,8 @@ export const events: Event[] = [
       capacity: 5000,
     },
     ticketTypes: [
-      { id: 'ga', name: 'General Admission', price: 75 },
-      { id: 'vip', name: 'VIP Access', price: 150 },
+      { id: 'ga', name: 'General Admission', price: 75, quantityAvailable: 2000, ticketsToIssue: 1, ticketLimitPerPerson: 10, saleStartDate: '2024-06-01T10:00:00Z', saleEndDate: '2024-07-20T17:00:00Z', status: 'active' },
+      { id: 'vip', name: 'VIP Access', price: 150, quantityAvailable: 250, ticketsToIssue: 1, ticketLimitPerPerson: 4, saleStartDate: '2024-06-01T10:00:00Z', saleEndDate: '2024-07-15T17:00:00Z', status: 'active' },
     ],
     isFeatured: true,
   },
@@ -45,7 +45,9 @@ export const events: Event[] = [
       address: '456 Ocean Blvd, Coast City',
       capacity: 1500,
     },
-    ticketTypes: [{ id: 'ga', name: 'General Admission', price: 55 }],
+    ticketTypes: [
+      { id: 'ga', name: 'General Admission', price: 55, quantityAvailable: 1500, ticketsToIssue: 1, ticketLimitPerPerson: 10, saleStartDate: '2024-06-15T10:00:00Z', saleEndDate: '2024-08-05T18:30:00Z', status: 'active' },
+    ],
     isFeatured: true,
   },
   {
@@ -67,8 +69,8 @@ export const events: Event[] = [
       capacity: 200,
     },
     ticketTypes: [
-      { id: 'seated', name: 'Seated Ticket', price: 90 },
-      { id: 'standing', name: 'Standing Room', price: 60 },
+      { id: 'seated', name: 'Seated Ticket', price: 90, quantityAvailable: 150, ticketsToIssue: 1, ticketLimitPerPerson: 4, saleStartDate: '2024-07-01T10:00:00Z', saleEndDate: '2024-08-15T19:00:00Z', status: 'active' },
+      { id: 'standing', name: 'Standing Room', price: 60, quantityAvailable: 50, ticketsToIssue: 1, ticketLimitPerPerson: 4, saleStartDate: '2024-07-01T10:00:00Z', saleEndDate: '2024-08-15T19:00:00Z', status: 'active' },
     ],
     isFeatured: false,
   },
@@ -92,8 +94,8 @@ export const events: Event[] = [
       capacity: 3000,
     },
     ticketTypes: [
-      { id: 'ga', name: 'General Admission', price: 80 },
-      { id: 'express', name: 'Express Entry', price: 120 },
+      { id: 'ga', name: 'General Admission', price: 80, quantityAvailable: 2800, ticketsToIssue: 1, ticketLimitPerPerson: 5, saleStartDate: '2024-07-15T10:00:00Z', saleEndDate: '2024-09-01T21:00:00Z', status: 'active' },
+      { id: 'express', name: 'Express Entry', price: 120, quantityAvailable: 200, ticketsToIssue: 1, ticketLimitPerPerson: 2, saleStartDate: '2024-07-15T10:00:00Z', saleEndDate: '2024-08-25T21:00:00Z', status: 'active' },
     ],
     isFeatured: true,
   },
@@ -118,8 +120,8 @@ export const events: Event[] = [
       capacity: 8000,
     },
     ticketTypes: [
-      { id: 'day', name: 'Day Pass', price: 65 },
-      { id: 'weekend', name: 'Weekend Pass', price: 110 },
+       { id: 'day', name: 'Day Pass', price: 65, quantityAvailable: 3000, ticketsToIssue: 1, ticketLimitPerPerson: 10, saleStartDate: '2024-06-10T10:00:00Z', saleEndDate: '2024-07-28T13:00:00Z', status: 'active' },
+       { id: 'weekend', name: 'Weekend Pass', price: 110, quantityAvailable: 5000, ticketsToIssue: 1, ticketLimitPerPerson: 10, saleStartDate: '2024-06-10T10:00:00Z', saleEndDate: '2024-07-27T13:00:00Z', status: 'active' },
     ],
     isFeatured: false,
   },

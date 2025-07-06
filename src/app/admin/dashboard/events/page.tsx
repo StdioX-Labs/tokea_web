@@ -16,29 +16,63 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ManageTicketsModal } from '@/components/manage-tickets-modal';
 
 export default function EventsPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    mode: 'add' | 'edit' | 'view';
+    event: Event | null;
+  }>({
+    isOpen: false,
+    mode: 'add',
+    event: null,
+  });
+
+  const [manageTicketsModalState, setManageTicketsModalState] = useState<{
+    isOpen: boolean;
+    event: Event | null;
+  }>({ isOpen: false, event: null });
+
 
   const handleAddNew = () => {
-    setEditingEvent(null);
-    setIsModalOpen(true);
+    setModalState({ isOpen: true, mode: 'add', event: null });
   };
 
   const handleEdit = (event: Event) => {
-    setEditingEvent(event);
-    setIsModalOpen(true);
+    setModalState({ isOpen: true, mode: 'edit', event });
+  };
+  
+  const handleView = (event: Event) => {
+    setModalState({ isOpen: true, mode: 'view', event });
+  };
+  
+  const handleManageTickets = (event: Event) => {
+    setManageTicketsModalState({ isOpen: true, event });
   };
 
+
   const handleModalClose = () => {
-    setIsModalOpen(false);
-    setEditingEvent(null);
+    setModalState({ isOpen: false, mode: 'add', event: null });
+  }
+  
+  const handleManageTicketsModalClose = () => {
+     setManageTicketsModalState({ isOpen: false, event: null });
   }
 
   return (
     <>
-      <AddEventModal event={editingEvent} isOpen={isModalOpen} onOpenChange={handleModalClose} />
+      <AddEventModal
+        isOpen={modalState.isOpen}
+        onOpenChange={handleModalClose}
+        event={modalState.event}
+        mode={modalState.mode}
+      />
+      <ManageTicketsModal
+        isOpen={manageTicketsModalState.isOpen}
+        onOpenChange={handleManageTicketsModalClose}
+        event={manageTicketsModalState.event}
+      />
       <div className="p-4 md:p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -100,11 +134,11 @@ export default function EventsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleView(event)}>View</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEdit(event)}>
                             Edit
                           </DropdownMenuItem>
-                           <DropdownMenuItem>Manage Tickets</DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => handleManageTickets(event)}>Manage Tickets</DropdownMenuItem>
                           <DropdownMenuItem>Promotions</DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive">
                             Deactivate
