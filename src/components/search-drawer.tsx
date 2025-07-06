@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Sheet,
@@ -13,17 +13,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-import { events } from '@/lib/events';
+import { getEvents } from '@/services/event-service';
 import type { Event } from '@/lib/types';
 import { Loader2, Search, XCircle, FileQuestion } from 'lucide-react';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, parseISO } from 'date-fns';
 
 interface SearchDrawerProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
-
-const uniqueLocations = [...new Set(events.map(event => event.location))];
 
 export default function SearchDrawer({ isOpen, onOpenChange }: SearchDrawerProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,6 +30,30 @@ export default function SearchDrawer({ isOpen, onOpenChange }: SearchDrawerProps
   const [results, setResults] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
+
+  // Fetch initial data when drawer opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoading(true);
+      async function fetchInitialData() {
+        try {
+          const events = await getEvents();
+          setAllEvents(events);
+          const locations = [...new Set(events.map(event => event.location).filter(Boolean))];
+          setUniqueLocations(locations);
+        } catch (error) {
+          console.error("Failed to fetch events for search", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+      fetchInitialData();
+    }
+  }, [isOpen]);
+
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -46,8 +68,10 @@ export default function SearchDrawer({ isOpen, onOpenChange }: SearchDrawerProps
       if (searchQuery || location || date) {
         setIsLoading(true);
         setHasSearched(true);
+        
+        // Simulating network delay for filtering, as data is already client-side
         setTimeout(() => {
-          let filteredEvents = events;
+          let filteredEvents = allEvents;
 
           if (searchQuery) {
             filteredEvents = filteredEvents.filter(event =>
@@ -61,13 +85,13 @@ export default function SearchDrawer({ isOpen, onOpenChange }: SearchDrawerProps
 
           if (date) {
             filteredEvents = filteredEvents.filter(event =>
-              isSameDay(new Date(event.date), date)
+              isSameDay(parseISO(event.date), date)
             );
           }
           
           setResults(filteredEvents);
           setIsLoading(false);
-        }, 500); 
+        }, 300); 
       } else {
         setResults([]);
         setHasSearched(false);
@@ -77,7 +101,7 @@ export default function SearchDrawer({ isOpen, onOpenChange }: SearchDrawerProps
     return () => {
       clearTimeout(handler);
     };
-  }, [searchQuery, location, date]);
+  }, [searchQuery, location, date, allEvents]);
   
   useEffect(() => {
     if(!isOpen) {
@@ -126,8 +150,12 @@ export default function SearchDrawer({ isOpen, onOpenChange }: SearchDrawerProps
         </div>
         
         <div className="flex-grow overflow-y-auto">
-          {isLoading ? (
-            <div className="flex justify-center items-center py-10">
+          {isLoading && !hasSearched ? (
+             <div className="flex justify-center items-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : hasSearched && isLoading ? (
+             <div className="flex justify-center items-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : hasSearched ? (
@@ -135,9 +163,9 @@ export default function SearchDrawer({ isOpen, onOpenChange }: SearchDrawerProps
               <ul className="space-y-2">
                 {results.map(event => (
                   <li key={event.id}>
-                    <Link href={`/events/${event.id}`} onClick={() => onOpenChange(false)} className='block p-3 rounded-md hover:bg-muted'>
+                    <Link href={`/events/${event.slug}`} onClick={() => onOpenChange(false)} className='block p-3 rounded-md hover:bg-muted'>
                         <p className="font-semibold">{event.name}</p>
-                        <p className="text-sm text-muted-foreground">{event.location} - {format(new Date(event.date), 'PPP')}</p>
+                        <p className="text-sm text-muted-foreground">{event.location} - {format(parseISO(event.date), 'PPP')}</p>
                     </Link>
                   </li>
                 ))}

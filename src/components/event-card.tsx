@@ -10,7 +10,7 @@ interface EventCardProps {
 
 export default function EventCard({ event }: EventCardProps) {
   return (
-    <Link href={`/events/${event.id}`} className="group block">
+    <Link href={`/events/${event.slug}`} className="group block">
       <div className="overflow-hidden rounded-lg bg-card text-card-foreground shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
         <Image
           src={event.posterImage}

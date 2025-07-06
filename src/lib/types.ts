@@ -31,6 +31,7 @@ export interface Promotion {
 
 export interface Event {
   id: string;
+  slug: string;
   name: string;
   date: string; // Corresponds to eventStartDate
   endDate?: string;

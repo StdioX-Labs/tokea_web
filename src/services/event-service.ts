@@ -25,6 +25,7 @@ interface ApiEvent {
   isFeatured: boolean;
   tickets: ApiTicketType[];
   category: string;
+  slug: string;
 }
 
 // Transformer functions to convert API data into our app's data types
@@ -47,6 +48,7 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
 
   return {
     id: String(apiEvent.id),
+    slug: apiEvent.slug,
     name: apiEvent.eventName,
     date: apiEvent.eventStartDate,
     endDate: apiEvent.eventEndDate || undefined,
@@ -84,6 +86,23 @@ export async function getEventById(id: string): Promise<Event | null> {
     return transformApiEventToEvent(response.event);
   } catch (error) {
     console.error(`Error fetching event ${id}:`, error);
+    return null;
+  }
+}
+
+
+/**
+ * Fetches a single event by its slug.
+ * This is implemented by fetching all events and finding the matching one.
+ * For large datasets, a dedicated API endpoint `/events/get-by-slug/{slug}` would be more performant.
+ */
+export async function getEventBySlug(slug: string): Promise<Event | null> {
+  try {
+    const allEvents = await getEvents();
+    const event = allEvents.find((e) => e.slug === slug);
+    return event || null;
+  } catch (error) {
+    console.error(`Error fetching event by slug ${slug}:`, error);
     return null;
   }
 }
