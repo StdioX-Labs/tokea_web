@@ -28,6 +28,27 @@ interface ApiEvent {
   slug: string;
 }
 
+// Interfaces for the purchase API
+interface PurchaseTicket {
+  ticketId: number;
+  quantity: number;
+}
+
+interface PurchaseCustomer {
+  mobile_number: string;
+  email: string;
+}
+
+export interface PurchasePayload {
+  eventId: number;
+  amountDisplayed: number;
+  coupon_code?: string;
+  channel: 'card' | 'mpesa';
+  customer: PurchaseCustomer;
+  tickets: PurchaseTicket[];
+}
+
+
 // Transformer functions to convert API data into our app's data types
 function transformApiTicketTypeToTicketType(apiTicket: ApiTicketType): TicketType {
   return {
@@ -107,4 +128,18 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
     console.error(`Error fetching event by slug ${slug}:`, error);
     return null;
   }
+}
+
+/**
+ * Submits ticket purchase requests to the backend.
+ * It takes an array of payloads and makes a separate API call for each.
+ */
+export async function purchaseTickets(payloads: PurchasePayload[]): Promise<any[]> {
+  const purchasePromises = payloads.map(payload =>
+    apiClient('/event/ticket/purchase', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  );
+  return Promise.all(purchasePromises);
 }

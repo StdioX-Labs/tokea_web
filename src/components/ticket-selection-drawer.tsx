@@ -82,7 +82,7 @@ export default function TicketSelectionDrawer({
             <div key={ticketType.id} className="flex items-center justify-between">
               <div>
                 <p className="font-semibold">{ticketType.name}</p>
-                <p className="text-muted-foreground">${ticketType.price.toFixed(2)}</p>
+                <p className="text-muted-foreground">KES {ticketType.price.toFixed(2)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -112,7 +112,7 @@ export default function TicketSelectionDrawer({
         <SheetFooter>
           <div className="flex w-full items-center justify-between gap-4">
              <div className="text-xl font-bold">
-                Total: <span className="text-accent">${total.toFixed(2)}</span>
+                Total: <span className="text-accent">KES {total.toFixed(2)}</span>
             </div>
             <Button
               size="lg"

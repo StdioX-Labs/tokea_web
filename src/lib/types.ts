@@ -63,4 +63,5 @@ export interface Order {
   items: CartItem[];
   total: number;
   orderDate: string;
+  couponCode?: string;
 }

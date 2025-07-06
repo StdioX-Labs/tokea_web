@@ -87,7 +87,7 @@ export default function EventDetailsPage({ params }: { params: { id: string } })
                 </h1>
 
                 <p className="mt-4 text-3xl font-bold text-accent">
-                    {event.ticketTypes.length > 1 ? `From $${minPrice.toFixed(2)}` : (event.ticketTypes.length === 1 ? `$${minPrice.toFixed(2)}` : 'Free')}
+                    {event.ticketTypes.length > 1 ? `From KES ${minPrice.toFixed(2)}` : (event.ticketTypes.length === 1 ? `KES ${minPrice.toFixed(2)}` : 'Free')}
                 </p>
                 
                 <div className="mt-8">

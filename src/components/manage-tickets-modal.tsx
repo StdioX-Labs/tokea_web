@@ -76,7 +76,7 @@ export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicket
                         {event.ticketTypes.map((ticket) => (
                         <TableRow key={ticket.id}>
                             <TableCell className="font-medium">{ticket.name}</TableCell>
-                            <TableCell>${ticket.price.toFixed(2)}</TableCell>
+                            <TableCell>KES {ticket.price.toFixed(2)}</TableCell>
                             <TableCell>{ticket.quantityAvailable}</TableCell>
                              <TableCell>{`${format(new Date(ticket.saleStartDate), 'PP')} - ${format(new Date(ticket.saleEndDate), 'PP')}`}</TableCell>
                             <TableCell>

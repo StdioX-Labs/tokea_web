@@ -22,7 +22,7 @@ interface CartContextType {
   removeItem: (ticketTypeId: string) => void;
   updateQuantity: (ticketTypeId: string, quantity: number) => void;
   clearCart: () => void;
-  createOrder: (customerName: string, customerEmail: string) => Order;
+  createOrder: (customerName: string, customerEmail: string, couponCode?: string) => Order;
   getOrder: (orderId: string) => Order | null;
   cartTotal: number;
   itemCount: number;
@@ -113,9 +113,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => {
     setItems([]);
-  }, []);
+    if (isLoaded) {
+       localStorage.removeItem('summer_cart_items');
+    }
+  }, [isLoaded]);
 
-  const createOrder = useCallback((customerName: string, customerEmail: string): Order => {
+  const createOrder = useCallback((customerName: string, customerEmail: string, couponCode?: string): Order => {
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const newOrder: Order = {
       id: `SUMMER-${Date.now()}`,
@@ -124,6 +127,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items: [...items],
       total,
       orderDate: new Date().toISOString(),
+      couponCode: couponCode,
     };
     
     try {
@@ -132,9 +136,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       console.error("Failed to save order to localStorage", error);
     }
 
-    clearCart();
+    // Don't clear cart here, it will be cleared after successful payment
     return newOrder;
-  }, [items, clearCart]);
+  }, [items]);
 
   const getOrder = useCallback((orderId: string): Order | null => {
     try {

@@ -76,7 +76,7 @@ export function ManagePromotionsModal({ isOpen, onOpenChange, event }: ManagePro
                         {event.promotions.map((promo) => (
                         <TableRow key={promo.id}>
                             <TableCell className="font-medium">{promo.codeBatchName}</TableCell>
-                            <TableCell>{promo.discountType === 'PERCENTAGE' ? `${promo.discountValue}%` : `$${promo.discountValue.toFixed(2)}`}</TableCell>
+                            <TableCell>{promo.discountType === 'PERCENTAGE' ? `${promo.discountValue}%` : `KES ${promo.discountValue.toFixed(2)}`}</TableCell>
                             <TableCell>{promo.numberOfCodes}</TableCell>
                             <TableCell>{`${format(new Date(promo.validFrom), 'PP')} - ${format(new Date(promo.validUntil), 'PP')}`}</TableCell>
                             <TableCell>

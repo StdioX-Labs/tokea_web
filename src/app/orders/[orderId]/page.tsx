@@ -49,7 +49,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
                     </div>
                     <div className='text-right'>
                         <h3 className="font-semibold mb-2">Total Paid</h3>
-                        <p className='text-3xl font-bold'>${order.total.toFixed(2)}</p>
+                        <p className='text-3xl font-bold'>KES {order.total.toFixed(2)}</p>
                     </div>
                 </div>
 
@@ -64,7 +64,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
                             <div className='grid md:grid-cols-3 items-center gap-4'>
                                 <div className='md:col-span-2'>
                                     <p><span className="font-semibold">Quantity:</span> {item.quantity}</p>
-                                    <p><span className="font-semibold">Price per ticket:</span> ${item.price.toFixed(2)}</p>
+                                    <p><span className="font-semibold">Price per ticket:</span> KES {item.price.toFixed(2)}</p>
                                 </div>
                                 <div className='flex justify-center items-center'>
                                     <QrCode className='w-24 h-24 text-foreground' />

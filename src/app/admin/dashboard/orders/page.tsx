@@ -70,7 +70,7 @@ export default function TransactionsPage() {
                                     <TableCell>
                                         <Badge variant={trx.status === 'Completed' ? 'default' : 'destructive'}>{trx.status}</Badge>
                                     </TableCell>
-                                    <TableCell className="text-right font-medium">${trx.total.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right font-medium">KES {trx.total.toFixed(2)}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
