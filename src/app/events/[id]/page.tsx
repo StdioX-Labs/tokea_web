@@ -11,9 +11,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
 import TicketSelectionDrawer from '@/components/ticket-selection-drawer';
-import { Calendar, MapPin, Users, Mic, Building, Info } from 'lucide-react';
+import { Calendar, MapPin, Users } from 'lucide-react';
+import { ShimmerButton } from '@/components/ui/shimmer-button';
+import { Separator } from '@/components/ui/separator';
 
 export default function EventDetailsPage({ params }: { params: { id: string } }) {
   const [isDrawerOpen, setDrawerOpen] = useState(false);
@@ -23,88 +24,88 @@ export default function EventDetailsPage({ params }: { params: { id: string } })
     notFound();
   }
 
+  const minPrice = Math.min(...event.ticketTypes.map((t) => t.price));
+
   return (
     <>
-      <div className="relative min-h-screen">
-        {/* Background Image */}
-        <Image
-          src={event.posterImage}
-          alt={`Background for ${event.name}`}
-          layout="fill"
-          objectFit="cover"
-          className="opacity-10 blur-lg"
-          data-ai-hint={event.posterImageHint}
-        />
-        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" />
+      <div className="bg-background">
+        <div className="container mx-auto max-w-6xl px-4 py-8 md:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start">
+            {/* Image Column */}
+            <div className="w-full lg:sticky top-24">
+              <Image
+                src={event.posterImage}
+                alt={`Poster for ${event.name}`}
+                width={800}
+                height={1200}
+                className="w-full h-auto object-cover rounded-xl shadow-lg aspect-[2/3] transition-transform duration-300 hover:scale-105"
+                data-ai-hint={event.posterImageHint}
+                priority
+              />
+            </div>
 
-        {/* Content */}
-        <div className="container relative py-12 md:py-24">
-          <div className="mx-auto max-w-5xl">
-            <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
-              <div className="md:col-span-1">
-                <Image
-                  src={event.posterImage}
-                  alt={`Poster for ${event.name}`}
-                  width={400}
-                  height={600}
-                  className="w-full rounded-lg shadow-2xl aspect-[2/3] object-cover"
-                  data-ai-hint={event.posterImageHint}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <div className="bg-card/80 backdrop-blur-md p-6 rounded-lg shadow-lg">
-                  <h1 className="font-headline text-4xl font-bold tracking-tight text-balance">
-                    {event.name}
-                  </h1>
-                  <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-lg text-muted-foreground">
-                    <div className="flex items-center">
-                      <Calendar className="mr-2 h-5 w-5" />
-                      <span>{format(new Date(event.date), 'MMMM d, yyyy')}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <MapPin className="mr-2 h-5 w-5" />
+            {/* Details Column */}
+            <div className="w-full">
+              <div className="flex flex-col h-full md:py-4">
+                 <div className="flex items-center text-sm text-muted-foreground mb-3">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      <span>{format(new Date(event.date), 'EEEE, MMMM d, yyyy')}</span>
+                      <span className='mx-3'>|</span>
+                      <MapPin className="mr-2 h-4 w-4" />
                       <span>{event.location}</span>
                     </div>
-                  </div>
 
-                  <div className="mt-8">
-                    <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
-                      <AccordionItem value="item-1">
-                        <AccordionTrigger className='font-headline text-lg'><Info className='mr-2' />Description</AccordionTrigger>
-                        <AccordionContent className="text-base">
-                          {event.description}
-                        </AccordionContent>
-                      </AccordionItem>
-                      <AccordionItem value="item-2">
-                        <AccordionTrigger className='font-headline text-lg'><Mic className='mr-2' />Artists</AccordionTrigger>
-                        <AccordionContent>
-                          <ul className="space-y-2">
-                            {event.artists.map((artist) => (
-                              <li key={artist.name}>
-                                <span className="font-semibold">{artist.name}</span> - <span className="text-muted-foreground">{artist.role}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </AccordionContent>
-                      </AccordionItem>
-                      <AccordionItem value="item-3">
-                        <AccordionTrigger className='font-headline text-lg'><Building className='mr-2' />Venue</AccordionTrigger>
-                        <AccordionContent>
-                           <p><span className="font-semibold">{event.venue.name}</span></p>
+                <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tight text-balance">
+                  {event.name}
+                </h1>
+
+                <p className="mt-4 text-3xl font-bold text-accent">
+                    {event.ticketTypes.length > 1 ? `From $${minPrice.toFixed(2)}` : `$${minPrice.toFixed(2)}`}
+                </p>
+                
+                <div className="mt-8">
+                    <ShimmerButton
+                        size="lg"
+                        className="w-full"
+                        onClick={() => setDrawerOpen(true)}
+                    >
+                        Buy Tickets
+                    </ShimmerButton>
+                </div>
+                
+                <Separator className="my-8" />
+                
+                <h3 className='text-xl font-bold font-headline mb-4'>About this event</h3>
+                <div className="text-muted-foreground space-y-4 leading-relaxed">
+                    <p>{event.description}</p>
+                </div>
+
+                <div className="mt-8">
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="artists">
+                      <AccordionTrigger className='text-base font-semibold'>Featuring Artists</AccordionTrigger>
+                      <AccordionContent>
+                        <ul className="space-y-3 pt-2">
+                          {event.artists.map((artist) => (
+                            <li key={artist.name} className="flex items-baseline">
+                              <span className="font-semibold text-foreground">{artist.name}</span>
+                              <span className="ml-2 text-sm text-muted-foreground">{artist.role}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="venue">
+                      <AccordionTrigger className='text-base font-semibold'>Venue Details</AccordionTrigger>
+                      <AccordionContent>
+                         <div className="space-y-1 pt-2">
+                           <p className="font-semibold text-foreground">{event.venue.name}</p>
                            <p className="text-muted-foreground">{event.venue.address}</p>
                            <p className="text-muted-foreground mt-2 flex items-center"><Users className="mr-2 h-4 w-4"/>Capacity: {event.venue.capacity.toLocaleString()}</p>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </div>
-                  
-                  <Button
-                    size="lg"
-                    className="mt-8 w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
-                    onClick={() => setDrawerOpen(true)}
-                  >
-                    Buy Tickets
-                  </Button>
+                         </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
               </div>
             </div>
