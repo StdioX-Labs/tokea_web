@@ -5,7 +5,7 @@ export interface TicketType {
 }
 
 export interface EventCategory {
-  id: string;
+  id:string;
   name: string;
 }
 
@@ -23,8 +23,6 @@ export interface Event {
   ticketTypes: TicketType[];
   isFeatured?: boolean;
   category?: EventCategory;
-  ticketSaleStartDate?: string;
-  ticketSaleEndDate?: string;
 }
 
 export interface CartItem {

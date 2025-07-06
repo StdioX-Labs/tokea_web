@@ -30,17 +30,16 @@ import { DatePicker } from '@/components/ui/date-picker';
 import type { Event, EventCategory } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from './ui/separator';
+import { Upload } from 'lucide-react';
 
 const eventFormSchema = z.object({
   name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  posterImage: z.string().url({ message: 'Please enter a valid image URL.' }),
+  posterImage: z.string().min(1, { message: 'Please upload a poster image.' }),
   categoryId: z.string({ required_error: 'Please select a category.' }),
   location: z.string().min(3, { message: 'Location is required.' }),
   date: z.date({ required_error: 'Event start date is required.' }),
-  endDate: z.date({ required_error: 'Event end date is required.' }),
-  ticketSaleStartDate: z.date({ required_error: 'Ticket sale start date is required.' }),
-  ticketSaleEndDate: z.date({ required_error: 'Ticket sale end date is required.' }),
+  endDate: z.date().optional(),
 });
 
 
@@ -81,8 +80,6 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
         location: event.location,
         date: new Date(event.date),
         endDate: event.endDate ? new Date(event.endDate) : undefined,
-        ticketSaleStartDate: event.ticketSaleStartDate ? new Date(event.ticketSaleStartDate) : undefined,
-        ticketSaleEndDate: event.ticketSaleEndDate ? new Date(event.ticketSaleEndDate) : undefined,
       });
     } else if (!event && isOpen) {
       form.reset({
@@ -93,8 +90,6 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
         location: '',
         date: undefined,
         endDate: undefined,
-        ticketSaleStartDate: undefined,
-        ticketSaleEndDate: undefined,
       });
     }
   }, [event, form, isOpen]);
@@ -155,11 +150,21 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
                   name="posterImage"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Event Poster URL</FormLabel>
+                      <FormLabel>Event Poster</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://example.com/poster.jpg" {...field} />
+                        <div className="flex items-center gap-2">
+                           <Input placeholder="Click 'Upload' to set image URL" value={field.value} readOnly />
+                           <Button 
+                             type="button" 
+                             variant="outline"
+                             onClick={() => field.onChange(`https://placehold.co/800x1200.png?t=${Date.now()}`)}
+                            >
+                              <Upload className="mr-2 h-4 w-4" />
+                             Upload
+                           </Button>
+                         </div>
                       </FormControl>
-                      <FormDescription>Provide a URL for the event poster image.</FormDescription>
+                      <FormDescription>Simulates uploading a file and generating a URL.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -171,7 +176,7 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
                     {posterUrl ? (
                          <Image src={posterUrl} alt="Event poster preview" width={400} height={600} className="w-full h-full object-cover" />
                     ) : (
-                        <p className="text-sm text-muted-foreground">No image URL</p>
+                        <p className="text-sm text-muted-foreground">No image</p>
                     )}
                  </div>
               </div>
@@ -240,44 +245,7 @@ export function AddEventModal({ isOpen, onOpenChange, event }: AddEventModalProp
                     name="endDate"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Event End Date</FormLabel>
-                        <FormControl>
-                        <DatePicker
-                            date={field.value}
-                            setDate={field.onChange}
-                            className="w-full"
-                        />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                    control={form.control}
-                    name="ticketSaleStartDate"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Ticket Sale Starts</FormLabel>
-                        <FormControl>
-                        <DatePicker
-                            date={field.value}
-                            setDate={field.onChange}
-                            className="w-full"
-                        />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="ticketSaleEndDate"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Ticket Sale Ends</FormLabel>
+                        <FormLabel>Event End Date (Optional)</FormLabel>
                         <FormControl>
                         <DatePicker
                             date={field.value}
