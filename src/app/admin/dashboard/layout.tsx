@@ -31,7 +31,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   const handleLogout = () => {
     // Here you would typically clear the user session
     console.log('Logging out...');
-    router.push('/admin/login');
+    router.push('/');
   };
 
   return (
