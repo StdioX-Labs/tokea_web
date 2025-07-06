@@ -1,4 +1,10 @@
-const API_BASE_URL = 'https://beta.soldoutafrica.com/api';
+const API_BASE_URL = 'https://kong-c7447f26ccus2ngvp.kongcloud.dev/api/v1';
+
+// Basic Auth credentials
+const username = '254717286026';
+const password = 's0ascAnn3r@56YearsLater!';
+const encodedCredentials = Buffer.from(`${username}:${password}`).toString('base64');
+
 
 export async function apiClient<T>(
   endpoint: string,
@@ -9,6 +15,7 @@ export async function apiClient<T>(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      Authorization: `Basic ${encodedCredentials}`,
     },
     ...options,
   };

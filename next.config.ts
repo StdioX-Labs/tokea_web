@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
         hostname: 'beta.soldoutafrica.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'kong-c7447f26ccus2ngvp.kongcloud.dev',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
