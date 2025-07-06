@@ -47,9 +47,11 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1.8 }}
             >
-              <ShimmerButton asChild size="lg">
-                <Link href="#featured-events">Browse Events</Link>
-              </ShimmerButton>
+              <Link href="#featured-events">
+                <ShimmerButton size="lg">
+                  Browse Events
+                </ShimmerButton>
+              </Link>
             </motion.div>
           </div>
         </div>

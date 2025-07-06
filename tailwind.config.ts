@@ -96,14 +96,14 @@ export default {
           },
         },
         'shimmer': {
-          'from': { 'background-position': '200% 0' },
-          'to': { 'background-position': '-200% 0' },
+          '0%': { 'background-position': '-100% 0' },
+          '100%': { 'background-position': '100% 0' },
         },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'shimmer': 'shimmer 2s linear infinite',
+        'shimmer': 'shimmer var(--shimmer-duration) linear infinite',
       },
     },
   },

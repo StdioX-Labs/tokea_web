@@ -1,44 +1,76 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
+import * as React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
 
 const shimmerButtonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 animate-shimmer bg-[linear-gradient(110deg,hsl(var(--accent)),45%,hsl(var(--accent-foreground)),55%,hsl(var(--accent)))] bg-[length:200%_100%] text-accent-foreground",
+  'group relative z-0 flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap text-accent-foreground transition-transform duration-300 ease-in-out hover:scale-105',
   {
     variants: {
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-lg px-8",
-        icon: "h-10 w-10",
+        default: 'h-10 px-6 py-3 text-sm rounded-md',
+        sm: 'h-9 px-4 text-sm rounded-md',
+        lg: 'h-11 px-8 text-base rounded-lg',
+        icon: 'h-10 w-10 rounded-full',
       },
     },
     defaultVariants: {
-      size: "default",
+      size: 'default',
     },
   }
-)
+);
 
 export interface ShimmerButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof shimmerButtonVariants> {
-  asChild?: boolean
+  shimmerColor?: string;
+  shimmerSize?: string;
+  shimmerDuration?: string;
+  background?: string;
 }
 
 const ShimmerButton = React.forwardRef<HTMLButtonElement, ShimmerButtonProps>(
-  ({ className, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+  (
+    {
+      shimmerColor = 'hsl(0 0% 100% / 0.1)',
+      shimmerSize = '0.1em',
+      shimmerDuration = '3s',
+      background = 'hsl(var(--accent))',
+      className,
+      children,
+      size,
+      ...props
+    },
+    ref
+  ) => {
     return (
-      <Comp
-        className={cn(shimmerButtonVariants({ size, className }))}
+      <button
+        style={
+          {
+            '--shimmer-color': shimmerColor,
+            '--shimmer-size': shimmerSize,
+            '--shimmer-duration': shimmerDuration,
+            '--background': background,
+          } as React.CSSProperties
+        }
+        className={cn(shimmerButtonVariants({ size, className }), '[background:var(--background)]')}
         ref={ref}
         {...props}
-      />
-    )
+      >
+        <div className="absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
+          <div
+            className={cn(
+              'absolute inset-0 z-0 h-full w-full',
+              'bg-repeat bg-[length:50%_100%] bg-gradient-to-r from:transparent_0% via:transparent_25% via-[color:var(--shimmer-color)]_50% via:transparent_75% to:transparent_100%',
+              'animate-shimmer'
+            )}
+          />
+        </div>
+        <div className="relative z-10 flex items-center space-x-2">{children}</div>
+      </button>
+    );
   }
-)
-ShimmerButton.displayName = "ShimmerButton"
+);
 
-export { ShimmerButton }
+ShimmerButton.displayName = 'ShimmerButton';
+
+export { ShimmerButton };
