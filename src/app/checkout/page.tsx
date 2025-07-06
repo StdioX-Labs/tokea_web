@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect, useCallback } from 'react';
 import type { Order, CartItem } from '@/lib/types';
@@ -23,6 +23,7 @@ const checkoutSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   phone: z.string().min(10, { message: 'Please enter a valid 10-digit phone number.' }).max(15, { message: 'Phone number is too long.' }),
+  mpesaPhone: z.string().min(10, { message: 'Please enter a valid 10-digit phone number.' }).max(15, { message: 'Phone number is too long.' }).optional().or(z.literal('')),
   couponCode: z.string().optional(),
 });
 
@@ -45,6 +46,7 @@ export default function CheckoutPage() {
       name: '',
       email: '',
       phone: '',
+      mpesaPhone: '',
       couponCode: '',
     },
   });
@@ -58,7 +60,6 @@ export default function CheckoutPage() {
   
   const handlePaymentSuccess = useCallback(() => {
     if (activeOrder) {
-        // Clear the cart from local storage after successful order creation on the backend
         clearCart();
         setTimeout(() => {
             router.push(`/confirmation/${activeOrder.id}`);
@@ -104,15 +105,15 @@ export default function CheckoutPage() {
   const startPaymentProcess = async (values: z.infer<typeof checkoutSchema>, channel: PaymentMethod) => {
     setPaymentStatus('processing');
 
-    // 1. Group cart items by eventId
     const itemsByEvent = items.reduce((acc, item) => {
       (acc[item.eventId] = acc[item.eventId] || []).push(item);
       return acc;
     }, {} as Record<string, CartItem[]>);
 
-    // 2. Create a payload for each event
     const payloads: PurchasePayload[] = Object.entries(itemsByEvent).map(([eventId, eventItems]) => {
       const amountDisplayed = eventItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const paymentPhoneNumber = channel === 'mpesa' && values.mpesaPhone ? values.mpesaPhone : values.phone;
+
       return {
         eventId: Number(eventId),
         amountDisplayed,
@@ -120,7 +121,7 @@ export default function CheckoutPage() {
         channel,
         customer: {
           email: values.email,
-          mobile_number: values.phone,
+          mobile_number: paymentPhoneNumber,
         },
         tickets: eventItems.map(item => ({
           ticketId: Number(item.ticketTypeId),
@@ -130,14 +131,11 @@ export default function CheckoutPage() {
     });
 
     try {
-      // 3. Call the purchase API
       await purchaseTickets(payloads);
 
-      // 4. Create local order for confirmation page
       const order = createOrder(values.name, values.email, values.couponCode);
       setActiveOrder(order);
 
-      // The useEffect for progress will handle the rest of the flow
     } catch (error) {
       console.error("Payment failed", error);
       setPaymentStatus('error');
@@ -146,7 +144,7 @@ export default function CheckoutPage() {
         title: 'Payment Failed',
         description: 'There was a problem processing your payment. Please try again.',
       });
-      setPaymentStatus('idle'); // Reset to allow retry
+      setPaymentStatus('idle');
     }
   };
 
@@ -241,7 +239,7 @@ export default function CheckoutPage() {
                             name="phone"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Phone Number</FormLabel>
+                                <FormLabel>Contact Phone Number</FormLabel>
                                 <FormControl>
                                     <Input placeholder="e.g. 0712345678" {...field} disabled={paymentStatus !== 'idle'} />
                                 </FormControl>
@@ -281,8 +279,22 @@ export default function CheckoutPage() {
                                     <TabsTrigger value="mpesa">Mobile Money</TabsTrigger>
                                     <TabsTrigger value="card">Card</TabsTrigger>
                                 </TabsList>
-                                <TabsContent value="mpesa" className="pt-4">
-                                    <p className="text-sm text-muted-foreground mb-4">You will receive a push notification to your M-Pesa number to complete the payment.</p>
+                                <TabsContent value="mpesa" className="pt-4 space-y-4">
+                                    <p className="text-sm text-muted-foreground">You will receive a push notification to your M-Pesa number to complete the payment.</p>
+                                    <FormField
+                                        control={form.control}
+                                        name="mpesaPhone"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>M-Pesa Phone Number</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g. 0712345678" {...field} />
+                                            </FormControl>
+                                            <FormDescription>The number to pay with. If blank, your contact number will be used.</FormDescription>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <Button onClick={() => handleSubmit('mpesa')} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
                                         Pay KES {cartTotal.toFixed(2)} with M-Pesa
                                     </Button>
