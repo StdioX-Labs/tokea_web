@@ -1,3 +1,5 @@
+'use client';
+
 import EventCard from '@/components/event-card';
 import {
   Carousel,
@@ -7,51 +9,54 @@ import {
   CarouselPrevious,
 } from '@/components/ui/carousel';
 import { events } from '@/lib/events';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import Image from 'next/image';
+import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
+import { motion } from 'framer-motion';
+import { ShimmerButton } from '@/components/ui/shimmer-button';
 
 export default function Home() {
   const featuredEvents = events.filter((event) => event.isFeatured);
   const upcomingEvents = events;
 
+  const titleWords = [
+    { text: 'Experience' },
+    { text: 'the' },
+    { text: 'Vibe' },
+    { text: 'of' },
+    { text: 'Summer', className: 'text-accent' },
+  ];
+
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-primary text-primary-foreground">
+      <section className="w-full py-20 md:py-32 lg:py-40 bg-primary text-primary-foreground">
         <div className="container px-4 md:px-6">
-          <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
-            <div className="flex flex-col justify-center space-y-4">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter font-headline sm:text-5xl xl:text-6xl/none text-balance">
-                  Experience the Vibe of Summer
-                </h1>
-                <p className="max-w-[600px] text-primary-foreground/80 md:text-xl">
-                  From sun-drenched festivals to intimate evening concerts, find and book tickets for the best events of the season.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-                  <Link href="#upcoming-events">
-                    Browse Events
-                  </Link>
-                </Button>
-              </div>
-            </div>
-            <Image
-              src="https://placehold.co/600x600.png"
-              width="600"
-              height="600"
-              alt="Hero"
-              className="mx-auto aspect-square overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
-              data-ai-hint="happy people concert"
-            />
+          <div className="flex flex-col items-center justify-center space-y-8 text-center">
+            <TypewriterEffectSmooth words={titleWords} />
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.5 }}
+              className="max-w-[700px] text-primary-foreground/80 md:text-xl text-balance"
+            >
+              From sun-drenched festivals to intimate evening concerts, find and
+              book tickets for the best events of the season.
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.8 }}
+            >
+              <ShimmerButton asChild size="lg">
+                <Link href="#featured-events">Browse Events</Link>
+              </ShimmerButton>
+            </motion.div>
           </div>
         </div>
       </section>
-      
+
       {/* Featured Events Carousel */}
-      <section className="w-full py-12 md:py-24">
+      <section id="featured-events" className="w-full py-12 md:py-24">
         <div className="container">
           <h2 className="text-3xl font-bold tracking-tighter font-headline mb-8">
             Featured Events
@@ -65,7 +70,10 @@ export default function Home() {
           >
             <CarouselContent>
               {featuredEvents.map((event) => (
-                <CarouselItem key={event.id} className="md:basis-1/2 lg:basis-1/3">
+                <CarouselItem
+                  key={event.id}
+                  className="md:basis-1/2 lg:basis-1/3"
+                >
                   <div className="p-1">
                     <EventCard event={event} />
                   </div>
@@ -79,7 +87,10 @@ export default function Home() {
       </section>
 
       {/* Upcoming Events Grid */}
-      <section id="upcoming-events" className="w-full pb-12 md:pb-24 lg:pb-32 bg-muted/50 pt-12 md:pt-24">
+      <section
+        id="upcoming-events"
+        className="w-full pb-12 md:pb-24 lg:pb-32 bg-muted/50 pt-12 md:pt-24"
+      >
         <div className="container">
           <h2 className="text-3xl font-bold tracking-tighter font-headline mb-8">
             All Upcoming Events
