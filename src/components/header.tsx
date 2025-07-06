@@ -7,10 +7,16 @@ import { useCart } from '@/context/cart-provider';
 import CartSheet from './cart-sheet';
 import { useState } from 'react';
 import SearchDrawer from './search-drawer';
+import { usePathname } from 'next/navigation';
 
 export default function Header() {
   const { itemCount, setCartOpen } = useCart();
   const [isSearchOpen, setSearchOpen] = useState(false);
+  const pathname = usePathname();
+
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <>

@@ -23,6 +23,7 @@ import {
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import AdminFooter from '@/components/admin-footer';
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -77,11 +78,11 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
               <SidebarMenuButton
                 asChild
                 isActive={pathname === '/admin/dashboard/orders'}
-                tooltip="Orders"
+                tooltip="Transactions"
               >
                 <Link href="/admin/dashboard/orders">
                   <Ticket />
-                  <span>Orders</span>
+                  <span>Transactions</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -115,7 +116,8 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
             </Avatar>
           </div>
         </header>
-        <main>{children}</main>
+        <main className="flex-1">{children}</main>
+        <AdminFooter />
       </SidebarInset>
     </SidebarProvider>
   );

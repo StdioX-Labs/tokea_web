@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Twitter, Instagram, Facebook } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 const FooterLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
   <Link href={href} className="text-muted-foreground transition-colors hover:text-foreground">
@@ -20,6 +21,7 @@ const SocialLink = ({ href, children }: { href: string; children: React.ReactNod
 export default function Footer() {
     const ref = useRef<HTMLElement>(null);
     const [isInView, setIsInView] = useState(false);
+    const pathname = usePathname();
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -43,6 +45,10 @@ export default function Footer() {
             }
         };
     }, []);
+
+    if (pathname.startsWith('/admin')) {
+        return null;
+    }
 
   return (
     <footer 
