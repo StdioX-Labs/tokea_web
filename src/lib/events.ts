@@ -25,6 +25,30 @@ export const events: Event[] = [
       { id: 'vip', name: 'VIP Access', price: 150, quantityAvailable: 250, ticketsToIssue: 1, ticketLimitPerPerson: 4, saleStartDate: '2024-06-01T10:00:00Z', saleEndDate: '2024-07-15T17:00:00Z', status: 'active' },
     ],
     isFeatured: true,
+    promotions: [
+        {
+            id: 'promo-1',
+            codeBatchName: 'EARLYBIRD10',
+            numberOfCodes: 100,
+            discountType: 'PERCENTAGE',
+            discountValue: 10,
+            validFrom: '2024-06-01T00:00:00Z',
+            validUntil: '2024-06-30T23:59:59Z',
+            maxUses: 100,
+            status: 'active'
+        },
+        {
+            id: 'promo-2',
+            codeBatchName: 'LASTCHANCE5',
+            numberOfCodes: 200,
+            discountType: 'FIXED_AMOUNT',
+            discountValue: 5,
+            validFrom: '2024-07-10T00:00:00Z',
+            validUntil: '2024-07-19T23:59:59Z',
+            maxUses: 200,
+            status: 'expired'
+        }
+    ]
   },
   {
     id: 'ocean-breeze-concert',

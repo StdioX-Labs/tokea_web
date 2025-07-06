@@ -17,6 +17,18 @@ export interface EventCategory {
   name: string;
 }
 
+export interface Promotion {
+  id: string;
+  codeBatchName: string;
+  numberOfCodes: number;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  discountValue: number;
+  validFrom: string;
+  validUntil: string;
+  maxUses: number;
+  status: 'active' | 'expired' | 'disabled';
+}
+
 export interface Event {
   id: string;
   name: string;
@@ -31,6 +43,7 @@ export interface Event {
   ticketTypes: TicketType[];
   isFeatured?: boolean;
   category?: EventCategory;
+  promotions?: Promotion[];
 }
 
 export interface CartItem {

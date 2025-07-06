@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ManageTicketsModal } from '@/components/manage-tickets-modal';
+import { ManagePromotionsModal } from '@/components/manage-promotions-modal';
 
 export default function EventsPage() {
   const [modalState, setModalState] = useState<{
@@ -30,6 +31,11 @@ export default function EventsPage() {
   });
 
   const [manageTicketsModalState, setManageTicketsModalState] = useState<{
+    isOpen: boolean;
+    event: Event | null;
+  }>({ isOpen: false, event: null });
+
+  const [managePromotionsModalState, setManagePromotionsModalState] = useState<{
     isOpen: boolean;
     event: Event | null;
   }>({ isOpen: false, event: null });
@@ -51,6 +57,10 @@ export default function EventsPage() {
     setManageTicketsModalState({ isOpen: true, event });
   };
 
+  const handleManagePromotions = (event: Event) => {
+    setManagePromotionsModalState({ isOpen: true, event });
+  };
+
 
   const handleModalClose = () => {
     setModalState({ isOpen: false, mode: 'add', event: null });
@@ -58,6 +68,10 @@ export default function EventsPage() {
   
   const handleManageTicketsModalClose = () => {
      setManageTicketsModalState({ isOpen: false, event: null });
+  }
+
+  const handleManagePromotionsModalClose = () => {
+    setManagePromotionsModalState({ isOpen: false, event: null });
   }
 
   return (
@@ -72,6 +86,11 @@ export default function EventsPage() {
         isOpen={manageTicketsModalState.isOpen}
         onOpenChange={handleManageTicketsModalClose}
         event={manageTicketsModalState.event}
+      />
+      <ManagePromotionsModal
+        isOpen={managePromotionsModalState.isOpen}
+        onOpenChange={handleManagePromotionsModalClose}
+        event={managePromotionsModalState.event}
       />
       <div className="p-4 md:p-8">
         <div className="flex items-center justify-between mb-8">
@@ -139,7 +158,9 @@ export default function EventsPage() {
                             Edit
                           </DropdownMenuItem>
                            <DropdownMenuItem onClick={() => handleManageTickets(event)}>Manage Tickets</DropdownMenuItem>
-                          <DropdownMenuItem>Promotions</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleManagePromotions(event)}>
+                            Promotions
+                          </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive">
                             Deactivate
                           </DropdownMenuItem>
