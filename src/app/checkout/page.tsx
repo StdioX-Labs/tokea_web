@@ -11,7 +11,7 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect, useCallback } from 'react';
-import type { Order, CartItem } from '@/lib/types';
+import type { Order } from '@/lib/types';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, CheckCircle2, ShieldCheck, Tag } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -105,33 +105,28 @@ export default function CheckoutPage() {
   const startPaymentProcess = async (values: z.infer<typeof checkoutSchema>, channel: PaymentMethod) => {
     setPaymentStatus('processing');
 
-    const itemsByEvent = items.reduce((acc, item) => {
-      (acc[item.eventId] = acc[item.eventId] || []).push(item);
-      return acc;
-    }, {} as Record<string, CartItem[]>);
+    if (items.length === 0) return;
 
-    const payloads: PurchasePayload[] = Object.entries(itemsByEvent).map(([eventId, eventItems]) => {
-      const amountDisplayed = eventItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const paymentPhoneNumber = channel === 'mpesa' && values.mpesaPhone ? values.mpesaPhone : values.phone;
+    const firstItem = items[0];
+    const paymentPhoneNumber = channel === 'mpesa' && values.mpesaPhone ? values.mpesaPhone : values.phone;
 
-      return {
-        eventId: Number(eventId),
-        amountDisplayed,
-        coupon_code: values.couponCode || undefined,
-        channel,
-        customer: {
-          email: values.email,
-          mobile_number: paymentPhoneNumber,
-        },
-        tickets: eventItems.map(item => ({
-          ticketId: Number(item.ticketTypeId),
-          quantity: item.quantity,
-        })),
-      };
-    });
+    const payload: PurchasePayload = {
+      eventId: Number(firstItem.eventId),
+      amountDisplayed: cartTotal,
+      coupon_code: values.couponCode || undefined,
+      channel,
+      customer: {
+        email: values.email,
+        mobile_number: paymentPhoneNumber,
+      },
+      tickets: items.map(item => ({
+        ticketId: Number(item.ticketTypeId),
+        quantity: item.quantity,
+      })),
+    };
 
     try {
-      await purchaseTickets(payloads);
+      await purchaseTickets(payload);
 
       const order = createOrder(values.name, values.email, values.couponCode);
       setActiveOrder(order);

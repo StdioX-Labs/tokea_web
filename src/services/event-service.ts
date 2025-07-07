@@ -246,17 +246,13 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 }
 
 /**
- * Submits ticket purchase requests to the backend.
- * It takes an array of payloads and makes a separate API call for each.
+ * Submits a ticket purchase request to the backend.
  */
-export async function purchaseTickets(payloads: PurchasePayload[]): Promise<any[]> {
-  const purchasePromises = payloads.map(payload =>
-    apiClient('/event/ticket/purchase', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    })
-  );
-  return Promise.all(purchasePromises);
+export async function purchaseTickets(payload: PurchasePayload): Promise<any> {
+  return apiClient('/event/ticket/purchase', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 /**

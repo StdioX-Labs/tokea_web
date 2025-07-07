@@ -10,6 +10,7 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 interface CartContextType {
   items: CartItem[];
@@ -36,6 +37,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCartOpen, setCartOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     try {
@@ -68,17 +70,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
       quantity: number
     ) => {
       setItems((prevItems) => {
-        const existingItemIndex = prevItems.findIndex(
-          (item) => item.ticketTypeId === ticketType.id && item.eventId === eventId
-        );
+        const isNewEvent = prevItems.length > 0 && prevItems[0].eventId !== eventId;
 
-        if (existingItemIndex > -1) {
-          const newItems = [...prevItems];
-          newItems[existingItemIndex].quantity += quantity;
-          return newItems;
+        if (isNewEvent) {
+            toast({
+                title: "Cart Cleared",
+                description: "Your cart was cleared to add tickets for a new event."
+            })
+        }
+        
+        const currentCart = isNewEvent ? [] : prevItems;
+
+        const existingItem = currentCart.find(item => item.ticketTypeId === ticketType.id);
+
+        if (existingItem) {
+          // Update quantity of existing item
+          return currentCart.map(item =>
+            item.ticketTypeId === ticketType.id
+              ? { ...item, quantity: item.quantity + quantity }
+              : item
+          );
         } else {
+          // Add new item
           return [
-            ...prevItems,
+            ...currentCart,
             {
               eventId,
               eventName,
@@ -91,7 +106,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       });
     },
-    []
+    [toast]
   );
 
   const removeItem = useCallback((ticketTypeId: string) => {
