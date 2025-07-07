@@ -30,6 +30,35 @@ const checkoutSchema = z.object({
 type PaymentStatus = 'idle' | 'processing' | 'awaitingVerification' | 'success' | 'error';
 type PaymentMethod = 'mpesa' | 'card';
 
+/**
+ * Formats a phone number to the 254... format for the API.
+ * @param phone The raw phone number string.
+ * @returns The formatted phone number.
+ */
+const formatPhoneNumberForApi = (phone: string | undefined): string => {
+    if (!phone) return '';
+    let cleaned = phone.replace(/\D/g, ''); // Remove all non-digit characters
+    
+    // Case: Starts with 0 (e.g., 0712345678)
+    if (cleaned.startsWith('0') && cleaned.length === 10) {
+        return '254' + cleaned.substring(1);
+    }
+    
+    // Case: Starts with 254 (e.g., 254712345678)
+    if (cleaned.startsWith('254') && cleaned.length === 12) {
+        return cleaned;
+    }
+    
+    // Case: Starts without 0 or 254 (e.g., 712345678) - assumes it's a Kenyan number
+    if (cleaned.length === 9) {
+        return '254' + cleaned;
+    }
+
+    // Fallback: Return the cleaned number. This handles cases where user might have entered +254...
+    // as the '+' is stripped by `replace`.
+    return cleaned;
+}
+
 export default function CheckoutPage() {
   const { items, cartTotal, itemCount, createOrder, clearCart } = useCart();
   const router = useRouter();
@@ -108,7 +137,8 @@ export default function CheckoutPage() {
     if (items.length === 0) return;
 
     const firstItem = items[0];
-    const paymentPhoneNumber = channel === 'mpesa' && values.mpesaPhone ? values.mpesaPhone : values.phone;
+    const rawPaymentPhoneNumber = channel === 'mpesa' && values.mpesaPhone ? values.mpesaPhone : values.phone;
+    const paymentPhoneNumber = formatPhoneNumberForApi(rawPaymentPhoneNumber);
 
     const payload: PurchasePayload = {
       eventId: Number(firstItem.eventId),
