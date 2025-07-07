@@ -163,7 +163,7 @@ export default function SearchDrawer({ isOpen, onOpenChange }: SearchDrawerProps
               <ul className="space-y-2">
                 {results.map(event => (
                   <li key={event.id}>
-                    <Link href={`/events/${event.id}`} onClick={() => onOpenChange(false)} className='block p-3 rounded-md hover:bg-muted'>
+                    <Link href={`/events/${event.slug}`} onClick={() => onOpenChange(false)} className='block p-3 rounded-md hover:bg-muted'>
                         <p className="font-semibold">{event.name}</p>
                         <p className="text-sm text-muted-foreground">{event.location} - {format(parseISO(event.date), 'PPP')}</p>
                     </Link>
