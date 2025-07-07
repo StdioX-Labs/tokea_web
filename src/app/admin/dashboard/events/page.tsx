@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { getEvents } from '@/services/event-service';
+import { getCompanyEvents } from '@/services/event-service';
 import { format } from 'date-fns';
 import type { Event } from '@/lib/types';
 import { AddEventModal } from '@/components/add-event-modal';
@@ -71,19 +71,21 @@ export default function EventsPage() {
     event: Event | null;
   }>({ isOpen: false, event: null });
 
-  useEffect(() => {
-    async function fetchEvents() {
-      try {
-        const fetchedEvents = await getEvents();
-        setEvents(fetchedEvents);
-      } catch (error) {
-        console.error("Failed to fetch events:", error);
-      } finally {
-        setIsLoading(false);
-      }
+  const fetchEvents = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const fetchedEvents = await getCompanyEvents();
+      setEvents(fetchedEvents);
+    } catch (error) {
+      console.error("Failed to fetch company events:", error);
+    } finally {
+      setIsLoading(false);
     }
-    fetchEvents();
   }, []);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
 
   const handleAddNew = () => {
@@ -110,6 +112,11 @@ export default function EventsPage() {
   const handleModalClose = () => {
     setModalState({ isOpen: false, mode: 'add', event: null });
   }
+
+  const handleModalSuccess = () => {
+    setModalState({ isOpen: false, mode: 'add', event: null });
+    fetchEvents();
+  };
   
   const handleManageTicketsModalClose = () => {
      setManageTicketsModalState({ isOpen: false, event: null });
@@ -124,6 +131,7 @@ export default function EventsPage() {
       <AddEventModal
         isOpen={modalState.isOpen}
         onOpenChange={handleModalClose}
+        onSuccess={handleModalSuccess}
         event={modalState.event}
         mode={modalState.mode}
       />

@@ -1,7 +1,7 @@
 import { apiClient } from '@/lib/api-client';
 import type { Event, TicketType } from '@/lib/types';
 
-// These interfaces describe the shape of the data from the remote API, using camelCase
+// These interfaces describe the shape of the data from the PUBLIC API
 interface ApiTicketType {
   id: number;
   ticketName: string;
@@ -28,6 +28,33 @@ interface ApiEvent {
   slug: string;
 }
 
+// These interfaces describe the shape of the data from the ADMIN/COMPANY API
+interface ApiAdminTicketType {
+  id: number;
+  ticketName: string;
+  ticketPrice: number;
+  quantityAvailable: number;
+  isActive: boolean;
+  ticketsToIssue: number;
+  ticketLimitPerPerson: number;
+  ticketSaleStartDate: string;
+  ticketSaleEndDate: string;
+}
+
+interface ApiAdminEvent {
+  id: number;
+  eventName: string;
+  eventDescription: string;
+  eventPosterUrl: string;
+  eventLocation: string;
+  eventStartDate: string;
+  eventEndDate: string | null;
+  isFeatured: boolean;
+  tickets: ApiAdminTicketType[];
+  category: string;
+  slug: string;
+}
+
 // Interfaces for the purchase API
 interface PurchaseTicket {
   ticketId: number;
@@ -48,6 +75,18 @@ export interface PurchasePayload {
   tickets: PurchaseTicket[];
 }
 
+// Interface for creating an event
+export interface CreateEventPayload {
+    eventName: string;
+    eventDescription: string;
+    eventPosterUrl: string;
+    eventCategory: { id: number };
+    eventLocation: string;
+    eventStartDate: string;
+    eventEndDate?: string;
+    users: { id: number };
+    company: { id: number };
+}
 
 // Transformer functions to convert API data into our app's data types
 function transformApiTicketTypeToTicketType(apiTicket: ApiTicketType): TicketType {
@@ -63,6 +102,21 @@ function transformApiTicketTypeToTicketType(apiTicket: ApiTicketType): TicketTyp
     status: apiTicket.isActive ? 'active' : 'disabled',
   };
 }
+
+function transformApiAdminTicketToTicketType(apiTicket: ApiAdminTicketType): TicketType {
+  return {
+    id: String(apiTicket.id),
+    name: apiTicket.ticketName,
+    price: apiTicket.ticketPrice || 0,
+    quantityAvailable: apiTicket.quantityAvailable,
+    ticketsToIssue: apiTicket.ticketsToIssue,
+    ticketLimitPerPerson: apiTicket.ticketLimitPerPerson,
+    saleStartDate: apiTicket.ticketSaleStartDate,
+    saleEndDate: apiTicket.ticketSaleEndDate,
+    status: apiTicket.isActive ? 'active' : 'disabled',
+  };
+}
+
 
 function transformApiEventToEvent(apiEvent: ApiEvent): Event {
   const posterHint = apiEvent.category?.toLowerCase().replace(/&/g, '').split(/\s+/).slice(0, 2).join(' ') || 'event poster';
@@ -89,13 +143,48 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
   };
 }
 
+function transformApiAdminEventToEvent(apiEvent: ApiAdminEvent): Event {
+  const posterHint = apiEvent.category?.toLowerCase().replace(/&/g, '').split(/\s+/).slice(0, 2).join(' ') || 'event poster';
+
+  return {
+    id: String(apiEvent.id),
+    slug: apiEvent.slug,
+    name: apiEvent.eventName,
+    date: apiEvent.eventStartDate,
+    endDate: apiEvent.eventEndDate || undefined,
+    location: apiEvent.eventLocation,
+    posterImage: apiEvent.eventPosterUrl,
+    posterImageHint: posterHint,
+    description: apiEvent.eventDescription,
+    isFeatured: apiEvent.isFeatured,
+    artists: [], // API doesn't have this, use default
+    venue: {
+      name: apiEvent.eventLocation,
+      address: '',
+      capacity: 0,
+    },
+    ticketTypes: apiEvent.tickets?.map(transformApiAdminTicketToTicketType) || [],
+    promotions: [], // API doesn't have this, use default
+  };
+}
+
+
 /**
- * Fetches all events from the API.
+ * Fetches all events from the PUBLIC API.
  */
 export async function getEvents(): Promise<Event[]> {
   const response = await apiClient<{ events: ApiEvent[] }>('/events/get/all');
   return response.events.map(transformApiEventToEvent);
 }
+
+/**
+ * Fetches all events from the COMPANY-SPECIFIC API.
+ */
+export async function getCompanyEvents(): Promise<Event[]> {
+  const response = await apiClient<{ events: ApiAdminEvent[] }>('/company/events/get');
+  return response.events.map(transformApiAdminEventToEvent);
+}
+
 
 /**
  * Fetches a single event by its ID.
@@ -142,4 +231,14 @@ export async function purchaseTickets(payloads: PurchasePayload[]): Promise<any[
     })
   );
   return Promise.all(purchasePromises);
+}
+
+/**
+ * Creates a new event using the ADMIN API.
+ */
+export async function createEvent(payload: CreateEventPayload): Promise<any> {
+    return apiClient('/event/create', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
 }

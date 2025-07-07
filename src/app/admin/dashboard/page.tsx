@@ -1,12 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, Ticket, Users, Activity } from "lucide-react";
-import { getEvents } from "@/services/event-service";
+import { getCompanyEvents } from "@/services/event-service";
 import { isFuture } from 'date-fns';
 
 export default async function DashboardPage() {
     let activeEventsCount = 0;
     try {
-        const allEvents = await getEvents();
+        const allEvents = await getCompanyEvents();
         // An event is considered active if its start date is in the future.
         activeEventsCount = allEvents.filter(event => isFuture(new Date(event.date))).length;
     } catch (error) {

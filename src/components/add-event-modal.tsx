@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -30,7 +30,9 @@ import { DatePicker } from '@/components/ui/date-picker';
 import type { Event, EventCategory } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from './ui/separator';
-import { Upload } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { createEvent, type CreateEventPayload } from '@/services/event-service';
 
 const eventFormSchema = z.object({
   name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
@@ -54,11 +56,15 @@ const categories: EventCategory[] = [
 interface AddEventModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onSuccess: () => void;
   event?: Event | null;
   mode?: 'add' | 'edit' | 'view';
 }
 
-export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: AddEventModalProps) {
+export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = 'add' }: AddEventModalProps) {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const form = useForm<z.infer<typeof eventFormSchema>>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
@@ -73,7 +79,10 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
   const posterUrl = form.watch('posterImage');
 
   useEffect(() => {
-    if (event && isOpen) {
+    if (!isOpen) {
+      form.reset();
+      setIsSubmitting(false);
+    } else if (event) {
       form.reset({
         name: event.name,
         description: event.description,
@@ -83,7 +92,7 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
         date: new Date(event.date),
         endDate: event.endDate ? new Date(event.endDate) : undefined,
       });
-    } else if (!event && isOpen) {
+    } else {
       form.reset({
         name: '',
         description: '',
@@ -96,10 +105,39 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
     }
   }, [event, form, isOpen]);
 
-  function onSubmit(values: z.infer<typeof eventFormSchema>) {
-    // In a real app, you'd handle saving the data here
-    console.log('Form submitted:', values);
-    onOpenChange(false);
+  async function onSubmit(values: z.infer<typeof eventFormSchema>) {
+    if (isViewMode) return;
+    setIsSubmitting(true);
+
+    if (mode === 'add') {
+      const payload: CreateEventPayload = {
+        eventName: values.name,
+        eventDescription: values.description,
+        eventPosterUrl: values.posterImage,
+        eventLocation: values.location,
+        eventStartDate: values.date.toISOString(),
+        eventEndDate: values.endDate?.toISOString(),
+        // Hardcoded as requested, will be updated later
+        eventCategory: { id: parseInt(values.categoryId) || 1 },
+        users: { id: 1 },
+        company: { id: 1 },
+      };
+
+      try {
+        await createEvent(payload);
+        toast({ title: "Success", description: "Event created successfully." });
+        onSuccess();
+      } catch (error) {
+        console.error("Failed to create event:", error);
+        toast({ variant: 'destructive', title: "Error", description: "Failed to create event." });
+        setIsSubmitting(false);
+      }
+    } else {
+      // TODO: Implement edit logic
+      console.log('Edit mode not yet implemented.');
+      setIsSubmitting(false);
+      onOpenChange(false);
+    }
   }
 
   return (
@@ -126,7 +164,7 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
                     <FormItem>
                       <FormLabel>Event Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. Summer Solstice Fest" {...field} disabled={isViewMode} />
+                        <Input placeholder="e.g. Summer Solstice Fest" {...field} disabled={isViewMode || isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -143,7 +181,7 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
                           placeholder="Tell us more about the event..."
                           className="resize-y min-h-[100px]"
                           {...field}
-                          disabled={isViewMode}
+                          disabled={isViewMode || isSubmitting}
                         />
                       </FormControl>
                       <FormMessage />
@@ -159,12 +197,12 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
                         <FormLabel>Event Poster</FormLabel>
                         <FormControl>
                           <div className="flex items-center gap-2">
-                            <Input placeholder="Click 'Upload' to set image URL" value={field.value} readOnly disabled={isViewMode}/>
+                            <Input placeholder="Click 'Upload' to set image URL" value={field.value} readOnly disabled={isViewMode || isSubmitting}/>
                             <Button 
                               type="button" 
                               variant="outline"
                               onClick={() => field.onChange(`https://placehold.co/800x1200.png?t=${Date.now()}`)}
-                              disabled={isViewMode}
+                              disabled={isViewMode || isSubmitting}
                               >
                                 <Upload className="mr-2 h-4 w-4" />
                               Upload
@@ -199,7 +237,7 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isViewMode}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isViewMode || isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select an event category" />
@@ -222,7 +260,7 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Green Meadows Park" {...field} disabled={isViewMode} />
+                      <Input placeholder="e.g. Green Meadows Park" {...field} disabled={isViewMode || isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -242,7 +280,7 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
                             date={field.value}
                             setDate={field.onChange}
                             className="w-full"
-                             disabled={isViewMode}
+                             disabled={isViewMode || isSubmitting}
                         />
                         </FormControl>
                         <FormMessage />
@@ -260,7 +298,7 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
                             date={field.value}
                             setDate={field.onChange}
                             className="w-full"
-                            disabled={isViewMode}
+                            disabled={isViewMode || isSubmitting}
                         />
                         </FormControl>
                         <FormMessage />
@@ -271,12 +309,15 @@ export function AddEventModal({ isOpen, onOpenChange, event, mode = 'add' }: Add
 
             <DialogFooter className="pt-4">
               <DialogClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" disabled={isSubmitting}>
                   {isViewMode ? 'Close' : 'Cancel'}
                 </Button>
               </DialogClose>
               {!isViewMode && (
-                <Button type="submit">Save Event</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Event
+                </Button>
               )}
             </DialogFooter>
           </form>
