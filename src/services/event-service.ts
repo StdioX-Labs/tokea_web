@@ -253,7 +253,7 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
   }
 }
 
-export async function purchaseTickets(payload: PurchasePayload): Promise<{ ticketGroup: string; message: string; status: boolean; }> {
+export async function purchaseTickets(payload: PurchasePayload): Promise<{ ticketGroup: string; message: string; status: boolean; checkoutUrl?: string; }> {
   return apiClient('/event/ticket/purchase', {
     method: 'POST',
     body: JSON.stringify(payload),

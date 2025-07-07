@@ -171,14 +171,17 @@ export default function CheckoutPage() {
         if (channel === 'mpesa') {
           setProgress(95);
           setPaymentStatus('awaitingVerification');
-        } else {
+        } else if (channel === 'card' && response.checkoutUrl) {
            setProgress(100);
            setPaymentStatus('success');
-           toast({ title: "Card Payment Initiated", description: "Redirecting to payment provider..."});
            setTimeout(() => {
             clearCart();
-            router.push('/');
-           }, 2000);
+            if (response.checkoutUrl) {
+                window.location.href = response.checkoutUrl;
+            }
+           }, 2500);
+        } else {
+          throw new Error('Invalid response from server for card payment.');
         }
       } else {
         throw new Error('Invalid response from server');
@@ -230,8 +233,12 @@ export default function CheckoutPage() {
       {paymentStatus === 'success' && (
         <>
           <CheckCircle2 className="h-16 w-16 text-green-500" />
-          <h3 className="mt-4 text-xl font-semibold">Payment Successful!</h3>
-          <p className="mt-2 text-muted-foreground">Redirecting to your order confirmation...</p>
+            <h3 className="mt-4 text-xl font-semibold">{paymentMethod === 'card' ? 'Redirecting...' : 'Payment Successful!'}</h3>
+            <p className="mt-2 text-muted-foreground">
+                {paymentMethod === 'card' 
+                ? "Please wait while we redirect you to our secure payment partner."
+                : "Redirecting to your order confirmation..."}
+            </p>
         </>
       )}
     </div>
