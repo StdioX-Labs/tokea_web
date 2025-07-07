@@ -267,7 +267,7 @@ export async function checkPaymentStatus(ticketGroup: string): Promise<{
     eventName: string;
 } | null> {
     try {
-        const response = await apiClient<ApiTicketGroupStatusResponse>(`/event/ticket/group/${ticketGroup}`);
+        const response = await apiClient<ApiTicketGroupStatusResponse>(`/event/ticket/group/get?ticketGroup=${ticketGroup}`);
         if (!response || !response.tickets || response.tickets.length === 0) {
             return null;
         }
