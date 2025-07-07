@@ -1,7 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, Ticket, Users, Activity } from "lucide-react";
+import { getEvents } from "@/services/event-service";
+import { isFuture } from 'date-fns';
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+    let activeEventsCount = 0;
+    try {
+        const allEvents = await getEvents();
+        // An event is considered active if its start date is in the future.
+        activeEventsCount = allEvents.filter(event => isFuture(new Date(event.date))).length;
+    } catch (error) {
+        console.error("Failed to fetch events for dashboard:", error);
+        // If the API fails, the count will remain 0, which is a safe fallback.
+    }
+
     return (
         <div className="p-4 md:p-8">
             <h1 className="text-3xl font-bold tracking-tight font-headline mb-8">
@@ -44,8 +56,8 @@ export default function DashboardPage() {
                         <Activity className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">4</div>
-                        <p className="text-xs text-muted-foreground">Currently running</p>
+                        <div className="text-2xl font-bold">{activeEventsCount}</div>
+                        <p className="text-xs text-muted-foreground">Upcoming events</p>
                     </CardContent>
                 </Card>
             </div>
