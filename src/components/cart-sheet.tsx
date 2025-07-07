@@ -44,7 +44,7 @@ export default function CartSheet() {
                         {item.ticketTypeName}
                       </p>
                       <p className="text-sm font-medium">
-                        ${item.price.toFixed(2)}
+                        KES {item.price.toFixed(2)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export default function CartSheet() {
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>${cartTotal.toFixed(2)}</span>
+                  <span>KES {cartTotal.toFixed(2)}</span>
                 </div>
                 <SheetClose asChild>
                   <Button asChild size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
