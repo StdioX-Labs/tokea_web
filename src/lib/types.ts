@@ -43,6 +43,7 @@ export interface Event {
   venue: { name: string; address: string; capacity: number };
   ticketTypes: TicketType[];
   isFeatured?: boolean;
+  isActive: boolean;
   category?: EventCategory;
   promotions?: Promotion[];
 }

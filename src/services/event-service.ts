@@ -23,6 +23,7 @@ interface ApiEvent {
   eventPosterUrl: string;
   eventDescription: string;
   isFeatured: boolean;
+  isActive: boolean;
   tickets: ApiTicketType[];
   category: string;
   slug: string;
@@ -50,6 +51,7 @@ interface ApiAdminEvent {
   eventStartDate: string;
   eventEndDate: string | null;
   isFeatured: boolean;
+  isActive: boolean;
   tickets: ApiAdminTicketType[];
   category: string;
   slug: string;
@@ -87,6 +89,10 @@ export interface CreateEventPayload {
     users: { id: number };
     company: { id: number };
 }
+
+// Interface for updating an event
+export interface UpdateEventPayload extends Omit<CreateEventPayload, 'users' | 'company'> {}
+
 
 // Transformer functions to convert API data into our app's data types
 function transformApiTicketTypeToTicketType(apiTicket: ApiTicketType): TicketType {
@@ -132,6 +138,7 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
     posterImageHint: posterHint,
     description: apiEvent.eventDescription,
     isFeatured: apiEvent.isFeatured,
+    isActive: apiEvent.isActive,
     artists: [], // API doesn't have this, use default
     venue: {
       name: apiEvent.eventLocation,
@@ -157,6 +164,7 @@ function transformApiAdminEventToEvent(apiEvent: ApiAdminEvent): Event {
     posterImageHint: posterHint,
     description: apiEvent.eventDescription,
     isFeatured: apiEvent.isFeatured,
+    isActive: apiEvent.isActive,
     artists: [], // API doesn't have this, use default
     venue: {
       name: apiEvent.eventLocation,
@@ -241,4 +249,32 @@ export async function createEvent(payload: CreateEventPayload): Promise<any> {
         method: 'POST',
         body: JSON.stringify(payload)
     });
+}
+
+/**
+ * Updates an existing event using the ADMIN API.
+ */
+export async function updateEvent(eventId: string, payload: UpdateEventPayload): Promise<any> {
+    return apiClient(`/event/update?eventId=${eventId}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+}
+
+/**
+ * Activates an event.
+ */
+export async function activateEvent(eventId: string): Promise<any> {
+    return apiClient('/event/activate', {
+        method: 'POST',
+        body: JSON.stringify({ eventIds: [parseInt(eventId)] }),
+    });
+}
+
+/**
+ * Fetches all tickets for a given event from the ADMIN API.
+ */
+export async function getEventTickets(eventId: string): Promise<TicketType[]> {
+    const response = await apiClient<{ tickets: ApiAdminTicketType[] }>(`/event/ticket/get?eventId=${eventId}`);
+    return response.tickets.map(transformApiAdminTicketToTicketType);
 }

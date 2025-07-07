@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from './ui/separator';
 import { Loader2, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { createEvent, type CreateEventPayload } from '@/services/event-service';
+import { createEvent, updateEvent, type CreateEventPayload, type UpdateEventPayload } from '@/services/event-service';
 
 const eventFormSchema = z.object({
   name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
@@ -87,7 +87,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
         name: event.name,
         description: event.description,
         posterImage: event.posterImage,
-        categoryId: event.category?.id || undefined,
+        categoryId: event.category?.id || '1',
         location: event.location,
         date: new Date(event.date),
         endDate: event.endDate ? new Date(event.endDate) : undefined,
@@ -108,35 +108,40 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
   async function onSubmit(values: z.infer<typeof eventFormSchema>) {
     if (isViewMode) return;
     setIsSubmitting(true);
-
-    if (mode === 'add') {
-      const payload: CreateEventPayload = {
-        eventName: values.name,
-        eventDescription: values.description,
-        eventPosterUrl: values.posterImage,
-        eventLocation: values.location,
-        eventStartDate: values.date.toISOString(),
-        eventEndDate: values.endDate?.toISOString(),
-        // Hardcoded as requested, will be updated later
-        eventCategory: { id: parseInt(values.categoryId) || 1 },
-        users: { id: 1 },
-        company: { id: 1 },
-      };
-
-      try {
+    
+    try {
+      if (mode === 'add') {
+        const payload: CreateEventPayload = {
+          eventName: values.name,
+          eventDescription: values.description,
+          eventPosterUrl: values.posterImage,
+          eventLocation: values.location,
+          eventStartDate: values.date.toISOString(),
+          eventEndDate: values.endDate?.toISOString(),
+          eventCategory: { id: parseInt(values.categoryId) },
+          users: { id: 1 }, // Hardcoded as requested
+          company: { id: 1 }, // Hardcoded as requested
+        };
         await createEvent(payload);
         toast({ title: "Success", description: "Event created successfully." });
-        onSuccess();
-      } catch (error) {
-        console.error("Failed to create event:", error);
-        toast({ variant: 'destructive', title: "Error", description: "Failed to create event." });
-        setIsSubmitting(false);
+      } else if (mode === 'edit' && event) {
+        const payload: UpdateEventPayload = {
+            eventName: values.name,
+            eventDescription: values.description,
+            eventPosterUrl: values.posterImage,
+            eventLocation: values.location,
+            eventStartDate: values.date.toISOString(),
+            eventEndDate: values.endDate?.toISOString(),
+            eventCategory: { id: parseInt(values.categoryId) },
+        };
+        await updateEvent(event.id, payload);
+        toast({ title: "Success", description: "Event updated successfully." });
       }
-    } else {
-      // TODO: Implement edit logic
-      console.log('Edit mode not yet implemented.');
-      setIsSubmitting(false);
-      onOpenChange(false);
+      onSuccess();
+    } catch (error) {
+       console.error(`Failed to ${mode} event:`, error);
+       toast({ variant: 'destructive', title: "Error", description: `Failed to ${mode} event.` });
+       setIsSubmitting(false);
     }
   }
 
@@ -147,10 +152,10 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
           <DialogTitle className="font-headline">
             {mode === 'add' && 'Add New Event'}
             {mode === 'edit' && 'Edit Event'}
-            {mode === 'view' && 'View Event'}
+            {mode === 'view' && 'View Event Details'}
           </DialogTitle>
           <DialogDescription>
-            {isViewMode ? 'Viewing event details.' : "Fill in the details below. Click save when you're done."}
+            {isViewMode ? `Viewing details for "${event?.name}".` : "Fill in the details below. Click save when you're done."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -197,12 +202,12 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
                         <FormLabel>Event Poster</FormLabel>
                         <FormControl>
                           <div className="flex items-center gap-2">
-                            <Input placeholder="Click 'Upload' to set image URL" value={field.value} readOnly disabled={isViewMode || isSubmitting}/>
+                            <Input placeholder="Click 'Upload' to set image URL" value={field.value} readOnly disabled />
                             <Button 
                               type="button" 
                               variant="outline"
                               onClick={() => field.onChange(`https://placehold.co/800x1200.png?t=${Date.now()}`)}
-                              disabled={isViewMode || isSubmitting}
+                              disabled={isSubmitting}
                               >
                                 <Upload className="mr-2 h-4 w-4" />
                               Upload
@@ -237,7 +242,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isViewMode || isSubmitting}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={isViewMode || isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select an event category" />
@@ -316,7 +321,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
               {!isViewMode && (
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Event
+                  {mode === 'add' ? 'Save Event' : 'Save Changes'}
                 </Button>
               )}
             </DialogFooter>

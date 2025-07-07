@@ -5,8 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { getCompanyEvents } from '@/services/event-service';
+import { MoreHorizontal, PlusCircle, Power, PowerOff } from 'lucide-react';
+import { getCompanyEvents, activateEvent } from '@/services/event-service';
 import { format } from 'date-fns';
 import type { Event } from '@/lib/types';
 import { AddEventModal } from '@/components/add-event-modal';
@@ -19,6 +19,7 @@ import {
 import { ManageTicketsModal } from '@/components/manage-tickets-modal';
 import { ManagePromotionsModal } from '@/components/manage-promotions-modal';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 function EventsPageSkeleton() {
   return (
@@ -51,6 +52,7 @@ function EventsPageSkeleton() {
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     mode: 'add' | 'edit' | 'view';
@@ -78,10 +80,11 @@ export default function EventsPage() {
       setEvents(fetchedEvents);
     } catch (error) {
       console.error("Failed to fetch company events:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch company events.' });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchEvents();
@@ -106,6 +109,21 @@ export default function EventsPage() {
 
   const handleManagePromotions = (event: Event) => {
     setManagePromotionsModalState({ isOpen: true, event });
+  };
+
+  const handleToggleStatus = async (event: Event) => {
+    if (event.isActive) {
+       toast({ title: 'Info', description: 'Deactivation endpoint not yet implemented.' });
+       return;
+    }
+    try {
+      await activateEvent(event.id);
+      toast({ title: 'Success', description: `Event "${event.name}" activated.`});
+      fetchEvents();
+    } catch(error) {
+      console.error("Failed to activate event:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to activate event.' });
+    }
   };
 
 
@@ -135,11 +153,13 @@ export default function EventsPage() {
         event={modalState.event}
         mode={modalState.mode}
       />
-      <ManageTicketsModal
-        isOpen={manageTicketsModalState.isOpen}
-        onOpenChange={handleManageTicketsModalClose}
-        event={manageTicketsModalState.event}
-      />
+      {manageTicketsModalState.event && (
+         <ManageTicketsModal
+            isOpen={manageTicketsModalState.isOpen}
+            onOpenChange={handleManageTicketsModalClose}
+            event={manageTicketsModalState.event}
+          />
+      )}
       <ManagePromotionsModal
         isOpen={managePromotionsModalState.isOpen}
         onOpenChange={handleManagePromotionsModalClose}
@@ -190,14 +210,14 @@ export default function EventsPage() {
                       <TableCell>
                         <Badge
                           variant={
-                            new Date(event.date) > new Date()
+                            event.isActive
                               ? 'default'
                               : 'secondary'
                           }
                         >
-                          {new Date(event.date) > new Date()
-                            ? 'Upcoming'
-                            : 'Past'}
+                          {event.isActive
+                            ? 'Active'
+                            : 'Inactive'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -217,8 +237,9 @@ export default function EventsPage() {
                             <DropdownMenuItem onClick={() => handleManagePromotions(event)}>
                               Promotions
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              Deactivate
+                            <DropdownMenuItem onClick={() => handleToggleStatus(event)} disabled={event.isActive}>
+                               {event.isActive ? <PowerOff className="mr-2 h-4 w-4" /> : <Power className="mr-2 h-4 w-4" />}
+                               {event.isActive ? 'Deactivate' : 'Activate'}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

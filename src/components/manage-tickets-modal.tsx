@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Event, TicketType } from '@/lib/types';
 import {
   Dialog,
@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Edit, ToggleLeft, ToggleRight } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -21,6 +21,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AddTicketModal } from './add-ticket-modal';
 import { format } from 'date-fns';
+import { getEventTickets } from '@/services/event-service';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from './ui/skeleton';
 
 interface ManageTicketsModalProps {
   isOpen: boolean;
@@ -28,9 +31,59 @@ interface ManageTicketsModalProps {
   event: Event | null;
 }
 
+function TicketsTableSkeleton() {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Ticket Name</TableHead>
+          <TableHead>Price</TableHead>
+          <TableHead>Qty Available</TableHead>
+          <TableHead>Sale Dates</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {[...Array(3)].map((_, i) => (
+          <TableRow key={i}>
+            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+            <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+            <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicketsModalProps) {
   const [addTicketModalOpen, setAddTicketModalOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<TicketType | null>(null);
+  const [tickets, setTickets] = useState<TicketType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchTickets() {
+      if (isOpen && event) {
+        setIsLoading(true);
+        try {
+          const fetchedTickets = await getEventTickets(event.id);
+          setTickets(fetchedTickets);
+        } catch (error) {
+          console.error("Failed to fetch tickets:", error);
+          toast({ variant: 'destructive', title: 'Error', description: 'Could not load ticket information.' });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    }
+    fetchTickets();
+  }, [isOpen, event, toast]);
 
   const handleAddTicket = () => {
     setEditingTicket(null);
@@ -60,7 +113,9 @@ export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicket
         </DialogHeader>
 
         <div className="py-4 max-h-[60vh] overflow-y-auto pr-4">
-            {event.ticketTypes.length > 0 ? (
+            {isLoading ? (
+                <TicketsTableSkeleton />
+            ) : tickets.length > 0 ? (
                  <Table>
                     <TableHeader>
                         <TableRow>
@@ -73,7 +128,7 @@ export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicket
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {event.ticketTypes.map((ticket) => (
+                        {tickets.map((ticket) => (
                         <TableRow key={ticket.id}>
                             <TableCell className="font-medium">{ticket.name}</TableCell>
                             <TableCell>KES {ticket.price.toFixed(2)}</TableCell>
