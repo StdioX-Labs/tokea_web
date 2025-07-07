@@ -297,7 +297,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
                     name="endDate"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Event End Date (Optional)</FormLabel>
+                        <FormLabel>Event End Date</FormLabel>
                         <FormControl>
                         <DatePicker
                             date={field.value}
