@@ -1,13 +1,15 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useCart } from '@/context/cart-provider';
-import type { Order } from '@/lib/types';
+import type { Order, PurchasedTicket } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { Ticket, Calendar, User, Mail, QrCode } from 'lucide-react';
+import { Ticket, Calendar, User, Mail } from 'lucide-react';
 
 export default function OrderDetailsPage({ params }: { params: { orderId: string } }) {
   const { getOrder } = useCart();
@@ -25,6 +27,19 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
   if (order === null) {
     notFound();
   }
+
+  const groupedTickets = order.tickets.reduce((acc, ticket) => {
+    const key = ticket.ticketName;
+    if (!acc[key]) {
+      acc[key] = {
+        ...ticket,
+        quantity: 0,
+      };
+    }
+    acc[key].quantity += 1;
+    return acc;
+  }, {} as Record<string, PurchasedTicket & { quantity: number }>);
+
 
   return (
     <div className="bg-muted/50 min-h-screen py-12 md:py-24">
@@ -56,18 +71,23 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
                 <Separator className='my-8'/>
 
                 <div className='space-y-6'>
-                    {order.items.map(item => (
-                        <div key={item.ticketTypeId} className="p-4 border rounded-lg bg-background">
-                            <h4 className='font-bold text-lg'>{item.eventName}</h4>
-                            <p className='text-muted-foreground'>{item.ticketTypeName}</p>
+                    {Object.values(groupedTickets).map(item => (
+                        <div key={item.id} className="p-4 border rounded-lg bg-background">
+                            <h4 className='font-bold text-lg'>{order.eventName}</h4>
+                            <p className='text-muted-foreground'>{item.ticketName}</p>
                             <Separator className='my-4' />
                             <div className='grid md:grid-cols-3 items-center gap-4'>
                                 <div className='md:col-span-2'>
                                     <p><span className="font-semibold">Quantity:</span> {item.quantity}</p>
-                                    <p><span className="font-semibold">Price per ticket:</span> KES {item.price.toFixed(2)}</p>
+                                    <p><span className="font-semibold">Price per ticket:</span> KES {item.ticketPrice.toFixed(2)}</p>
                                 </div>
                                 <div className='flex justify-center items-center'>
-                                    <QrCode className='w-24 h-24 text-foreground' />
+                                    <Image
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(item.ticketGroupCode)}`}
+                                        alt={`QR Code for ${item.ticketName}`}
+                                        width={100}
+                                        height={100}
+                                    />
                                 </div>
                             </div>
                         </div>

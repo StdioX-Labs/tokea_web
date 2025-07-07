@@ -1,9 +1,9 @@
+
 'use server';
 
 import { apiClient } from '@/lib/api-client';
-import type { Event, TicketType } from '@/lib/types';
+import type { Event, TicketType, PurchasedTicket } from '@/lib/types';
 
-// These interfaces describe the shape of the data from the PUBLIC API
 interface ApiTicketType {
   id: number;
   ticketName: string;
@@ -31,7 +31,6 @@ interface ApiEvent {
   slug: string;
 }
 
-// These interfaces describe the shape of the data from the ADMIN/COMPANY API
 interface ApiAdminTicketType {
   id: number;
   ticketName: string;
@@ -59,7 +58,6 @@ interface ApiAdminEvent {
   slug: string;
 }
 
-// Interfaces for the purchase API
 interface PurchaseTicket {
   ticketId: number;
   quantity: number;
@@ -79,7 +77,6 @@ export interface PurchasePayload {
   tickets: PurchaseTicket[];
 }
 
-// Interface for creating an event
 export interface CreateEventPayload {
     eventName: string;
     eventDescription: string;
@@ -92,11 +89,8 @@ export interface CreateEventPayload {
     company: { id: number };
 }
 
-// Interface for updating an event
 export interface UpdateEventPayload extends Omit<CreateEventPayload, 'users' | 'company'> {}
 
-
-// Interface for creating a ticket
 export interface CreateTicketPayload {
   event: { id: number };
   ticketName: string;
@@ -110,11 +104,42 @@ export interface CreateTicketPayload {
   isFree: boolean;
 }
 
-// Interface for updating a ticket
 export interface UpdateTicketPayload extends Omit<CreateTicketPayload, 'event'> {}
 
+interface ApiTicketInGroup {
+    id: number;
+    ticketName: string;
+    ticketPrice: number;
+    barcode: string | null;
+    ticketGroupCode: string;
+    customerMobile: string;
+    isComplementary: boolean;
+    status: 'PENDING_PAYMENT' | 'VALID' | string;
+    createdAt: string;
+}
 
-// Transformer functions to convert API data into our app's data types
+interface ApiTicketGroupStatusResponse {
+    tickets: ApiTicketInGroup[];
+    posterUrl: string;
+    ticketPrice: number;
+    event: string;
+    status: boolean;
+}
+
+function transformApiTicketInGroup(apiTicket: ApiTicketInGroup): PurchasedTicket {
+    return {
+        id: apiTicket.id,
+        ticketName: apiTicket.ticketName,
+        ticketPrice: apiTicket.ticketPrice,
+        barcode: apiTicket.barcode,
+        ticketGroupCode: apiTicket.ticketGroupCode,
+        customerMobile: apiTicket.customerMobile,
+        isComplementary: apiTicket.isComplementary,
+        status: apiTicket.status,
+        createdAt: apiTicket.createdAt,
+    };
+}
+
 function transformApiTicketTypeToTicketType(apiTicket: ApiTicketType): TicketType {
   return {
     id: String(apiTicket.id),
@@ -159,14 +184,14 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
     description: apiEvent.eventDescription,
     isFeatured: apiEvent.isFeatured,
     isActive: apiEvent.isActive,
-    artists: [], // API doesn't have this, use default
+    artists: [],
     venue: {
       name: apiEvent.eventLocation,
       address: '',
       capacity: 0,
     },
     ticketTypes: apiEvent.tickets?.map(transformApiTicketTypeToTicketType) || [],
-    promotions: [], // API doesn't have this, use default
+    promotions: [],
   };
 }
 
@@ -185,40 +210,27 @@ function transformApiAdminEventToEvent(apiEvent: ApiAdminEvent): Event {
     description: apiEvent.eventDescription,
     isFeatured: apiEvent.isFeatured,
     isActive: apiEvent.isActive,
-    artists: [], // API doesn't have this, use default
+    artists: [],
     venue: {
       name: apiEvent.eventLocation,
       address: '',
       capacity: 0,
     },
     ticketTypes: apiEvent.tickets?.map(transformApiAdminTicketToTicketType) || [],
-    promotions: [], // API doesn't have this, use default
+    promotions: [],
   };
 }
 
-
-/**
- * Fetches all events from the PUBLIC API.
- */
 export async function getEvents(): Promise<Event[]> {
   const response = await apiClient<{ events: ApiEvent[] }>('/events/get/all');
   return response.events.map(transformApiEventToEvent);
 }
 
-/**
- * Fetches all events from the COMPANY-SPECIFIC API.
- */
 export async function getCompanyEvents(): Promise<Event[]> {
   const response = await apiClient<{ events: ApiAdminEvent[] }>('/company/events/get');
   return response.events.map(transformApiAdminEventToEvent);
 }
 
-
-/**
- * Fetches a single event by its ID.
- * This is implemented by fetching all events and finding the matching one.
- * For large datasets, a dedicated API endpoint `/events/get/{id}` would be more performant.
- */
 export async function getEventById(id: string): Promise<Event | null> {
   try {
     const allEvents = await getEvents();
@@ -230,12 +242,6 @@ export async function getEventById(id: string): Promise<Event | null> {
   }
 }
 
-
-/**
- * Fetches a single event by its slug.
- * This is implemented by fetching all events and finding the matching one.
- * For large datasets, a dedicated API endpoint `/events/get-by-slug/{slug}` would be more performant.
- */
 export async function getEventBySlug(slug: string): Promise<Event | null> {
   try {
     const allEvents = await getEvents();
@@ -247,19 +253,42 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
   }
 }
 
-/**
- * Submits a ticket purchase request to the backend.
- */
-export async function purchaseTickets(payload: PurchasePayload): Promise<any> {
+export async function purchaseTickets(payload: PurchasePayload): Promise<{ ticketGroup: string; message: string; status: boolean; }> {
   return apiClient('/event/ticket/purchase', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-/**
- * Creates a new event using the ADMIN API.
- */
+export async function checkPaymentStatus(ticketGroup: string): Promise<{
+    tickets: PurchasedTicket[];
+    posterUrl: string;
+    total: number;
+    eventName: string;
+} | null> {
+    try {
+        const response = await apiClient<ApiTicketGroupStatusResponse>(`/event/ticket/group/${ticketGroup}`);
+        if (!response || !response.tickets || response.tickets.length === 0) {
+            return null;
+        }
+
+        const isPaid = response.tickets.some(t => t.status === 'VALID');
+        if (!isPaid) {
+            return null;
+        }
+
+        return {
+            tickets: response.tickets.map(transformApiTicketInGroup),
+            posterUrl: response.posterUrl,
+            total: response.ticketPrice,
+            eventName: response.event,
+        };
+    } catch (error) {
+        console.log(`Polling for ${ticketGroup}: Not found or error. Continuing.`);
+        return null;
+    }
+}
+
 export async function createEvent(payload: CreateEventPayload): Promise<any> {
     return apiClient('/event/create', {
         method: 'POST',
@@ -267,9 +296,6 @@ export async function createEvent(payload: CreateEventPayload): Promise<any> {
     });
 }
 
-/**
- * Updates an existing event using the ADMIN API.
- */
 export async function updateEvent(eventId: string, payload: UpdateEventPayload): Promise<any> {
     return apiClient(`/event/update?eventId=${eventId}`, {
         method: 'POST',
@@ -277,9 +303,6 @@ export async function updateEvent(eventId: string, payload: UpdateEventPayload):
     });
 }
 
-/**
- * Activates an event.
- */
 export async function activateEvent(eventId: string): Promise<any> {
     return apiClient('/event/activate', {
         method: 'POST',
@@ -287,17 +310,11 @@ export async function activateEvent(eventId: string): Promise<any> {
     });
 }
 
-/**
- * Fetches all tickets for a given event from the ADMIN API.
- */
 export async function getEventTickets(eventId: string): Promise<TicketType[]> {
     const response = await apiClient<{ tickets: ApiAdminTicketType[] }>(`/event/ticket/get?eventId=${eventId}`);
     return response.tickets.map(transformApiAdminTicketToTicketType);
 }
 
-/**
- * Creates a new ticket for an event.
- */
 export async function createTicket(payload: CreateTicketPayload): Promise<any> {
     return apiClient('/event/ticket/create', {
         method: 'POST',
@@ -305,9 +322,6 @@ export async function createTicket(payload: CreateTicketPayload): Promise<any> {
     });
 }
 
-/**
- * Updates an existing ticket.
- */
 export async function updateTicket(ticketId: string, payload: UpdateTicketPayload): Promise<any> {
     return apiClient(`/event/ticket/update?ticketId=${ticketId}`, {
         method: 'POST',

@@ -1,6 +1,7 @@
+
 'use client';
 
-import type { CartItem, Order, TicketType } from '@/lib/types';
+import type { CartItem, Order, TicketType, PurchasedTicket } from '@/lib/types';
 import {
   createContext,
   useState,
@@ -23,7 +24,16 @@ interface CartContextType {
   removeItem: (ticketTypeId: string) => void;
   updateQuantity: (ticketTypeId: string, quantity: number) => void;
   clearCart: () => void;
-  createOrder: (customerName: string, customerEmail: string, couponCode?: string) => Order;
+  createOrder: (
+    ticketGroup: string,
+    customerName: string,
+    customerEmail: string,
+    purchasedTickets: PurchasedTicket[],
+    total: number,
+    posterUrl: string,
+    eventName: string,
+    couponCode?: string
+  ) => Order;
   getOrder: (orderId: string) => Order | null;
   cartTotal: number;
   itemCount: number;
@@ -84,14 +94,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const existingItem = currentCart.find(item => item.ticketTypeId === ticketType.id);
 
         if (existingItem) {
-          // Update quantity of existing item
           return currentCart.map(item =>
             item.ticketTypeId === ticketType.id
               ? { ...item, quantity: item.quantity + quantity }
               : item
           );
         } else {
-          // Add new item
           return [
             ...currentCart,
             {
@@ -133,14 +141,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoaded]);
 
-  const createOrder = useCallback((customerName: string, customerEmail: string, couponCode?: string): Order => {
-    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const createOrder = useCallback((
+    ticketGroup: string,
+    customerName: string,
+    customerEmail: string,
+    purchasedTickets: PurchasedTicket[],
+    total: number,
+    posterUrl: string,
+    eventName: string,
+    couponCode?: string
+  ): Order => {
     const newOrder: Order = {
-      id: `SUMMER-${Date.now()}`,
+      id: ticketGroup,
       customerName,
       customerEmail,
-      items: [...items],
+      tickets: purchasedTickets,
       total,
+      posterUrl,
+      eventName,
       orderDate: new Date().toISOString(),
       couponCode: couponCode,
     };
@@ -151,9 +169,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       console.error("Failed to save order to localStorage", error);
     }
 
-    // Don't clear cart here, it will be cleared after successful payment
     return newOrder;
-  }, [items]);
+  }, []);
 
   const getOrder = useCallback((orderId: string): Order | null => {
     try {

@@ -1,11 +1,22 @@
+
+export interface PurchasedTicket {
+  id: number;
+  ticketName: string;
+  ticketPrice: number;
+  barcode: string | null;
+  ticketGroupCode: string;
+  customerMobile: string;
+  isComplementary: boolean;
+  status: 'PENDING_PAYMENT' | 'VALID' | string;
+  createdAt: string;
+}
+
 export interface TicketType {
   id: string;
   name: string;
   price: number;
   quantityAvailable: number;
-  // ticketsToIssue is how many tickets are granted per purchase of this type. 1 for single, 2 for couple etc.
   ticketsToIssue: number;
-  // 0 for unlimited
   ticketLimitPerPerson: number;
   saleStartDate: string;
   saleEndDate: string;
@@ -33,7 +44,7 @@ export interface Event {
   id: string;
   slug: string;
   name: string;
-  date: string; // Corresponds to eventStartDate
+  date: string;
   endDate?: string;
   location: string;
   posterImage: string;
@@ -58,11 +69,13 @@ export interface CartItem {
 }
 
 export interface Order {
-  id: string;
+  id: string; // This will be the ticketGroup code
   customerName: string;
   customerEmail: string;
-  items: CartItem[];
+  tickets: PurchasedTicket[];
   total: number;
   orderDate: string;
   couponCode?: string;
+  posterUrl: string;
+  eventName: string;
 }

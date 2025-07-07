@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -16,7 +17,7 @@ import Link from 'next/link';
 import { ArrowLeft, Loader2, CheckCircle2, ShieldCheck, Tag } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from '@/components/ui/progress';
-import { purchaseTickets, type PurchasePayload } from '@/services/event-service';
+import { purchaseTickets, type PurchasePayload, checkPaymentStatus } from '@/services/event-service';
 import { useToast } from '@/hooks/use-toast';
 
 const checkoutSchema = z.object({
@@ -30,32 +31,19 @@ const checkoutSchema = z.object({
 type PaymentStatus = 'idle' | 'processing' | 'awaitingVerification' | 'success' | 'error';
 type PaymentMethod = 'mpesa' | 'card';
 
-/**
- * Formats a phone number to the 254... format for the API.
- * @param phone The raw phone number string.
- * @returns The formatted phone number.
- */
 const formatPhoneNumberForApi = (phone: string | undefined): string => {
     if (!phone) return '';
-    let cleaned = phone.replace(/\D/g, ''); // Remove all non-digit characters
+    let cleaned = phone.replace(/\D/g, '');
     
-    // Case: Starts with 0 (e.g., 0712345678)
     if (cleaned.startsWith('0') && cleaned.length === 10) {
         return '254' + cleaned.substring(1);
     }
-    
-    // Case: Starts with 254 (e.g., 254712345678)
     if (cleaned.startsWith('254') && cleaned.length === 12) {
         return cleaned;
     }
-    
-    // Case: Starts without 0 or 254 (e.g., 712345678) - assumes it's a Kenyan number
     if (cleaned.length === 9) {
         return '254' + cleaned;
     }
-
-    // Fallback: Return the cleaned number. This handles cases where user might have entered +254...
-    // as the '+' is stripped by `replace`.
     return cleaned;
 }
 
@@ -64,10 +52,10 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
-  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa');
   const [progress, setProgress] = useState(0);
+  const [ticketGroup, setTicketGroup] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof checkoutSchema>>({
     resolver: zodResolver(checkoutSchema),
@@ -82,58 +70,79 @@ export default function CheckoutPage() {
   
   useEffect(() => {
     setIsClient(true);
-    if (isClient && itemCount === 0 && !activeOrder) {
+    if (isClient && itemCount === 0 && !ticketGroup) {
       router.replace('/');
     }
-  }, [itemCount, router, isClient, activeOrder]);
+  }, [itemCount, router, isClient, ticketGroup]);
   
-  const handlePaymentSuccess = useCallback(() => {
-    if (activeOrder) {
-        clearCart();
-        setTimeout(() => {
-            router.push(`/confirmation/${activeOrder.id}`);
-        }, 1500);
-    }
-  }, [activeOrder, router, clearCart]);
+  const handlePaymentSuccess = useCallback((orderId: string) => {
+    clearCart();
+    setTimeout(() => {
+        router.push(`/confirmation/${orderId}`);
+    }, 1500);
+  }, [router, clearCart]);
+
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (paymentStatus === 'processing') {
-      setProgress(10);
-      timer = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 95) {
-            clearInterval(timer);
-            return 95;
-          }
-          return prev + Math.floor(Math.random() * 10) + 5;
-        });
-      }, 500);
+    if (paymentStatus !== 'awaitingVerification' || !ticketGroup) {
+      return;
     }
-    return () => clearInterval(timer);
-  }, [paymentStatus]);
 
-  useEffect(() => {
-    if (progress >= 95 && paymentStatus === 'processing') {
-      if (paymentMethod === 'mpesa') {
-        setPaymentStatus('awaitingVerification');
-        setTimeout(() => {
-          setProgress(100);
-          setPaymentStatus('success');
-        }, 3000);
-      } else {
-        setProgress(100);
+    const pollInterval = 5000;
+    const pollTimeout = 120000;
+
+    let pollTimer: NodeJS.Timeout | null = null;
+    
+    const timeoutTimer = setTimeout(() => {
+      if (pollTimer) clearInterval(pollTimer);
+      setPaymentStatus('error');
+      toast({
+        variant: 'destructive',
+        title: 'Payment Timed Out',
+        description: 'We did not receive payment confirmation in time. Please try again.',
+      });
+      setPaymentStatus('idle');
+      setTicketGroup(null);
+    }, pollTimeout);
+
+    const poll = async () => {
+      if(!ticketGroup) return;
+      const result = await checkPaymentStatus(ticketGroup);
+      if (result) {
+        if (pollTimer) clearInterval(pollTimer);
+        clearTimeout(timeoutTimer);
+
         setPaymentStatus('success');
+        setProgress(100);
+
+        const values = form.getValues();
+        const order = createOrder(
+          ticketGroup,
+          values.name,
+          values.email,
+          result.tickets,
+          result.total,
+          result.posterUrl,
+          result.eventName,
+          values.couponCode
+        );
+        handlePaymentSuccess(order.id);
       }
-    }
-    if (paymentStatus === 'success') {
-      handlePaymentSuccess();
-    }
-  }, [progress, paymentStatus, paymentMethod, handlePaymentSuccess]);
+    };
+    
+    poll();
+    pollTimer = setInterval(poll, pollInterval);
+
+    return () => {
+      if (pollTimer) clearInterval(pollTimer);
+      clearTimeout(timeoutTimer);
+    };
+  }, [paymentStatus, ticketGroup, handlePaymentSuccess, form, createOrder, toast]);
+
 
   const startPaymentProcess = async (values: z.infer<typeof checkoutSchema>, channel: PaymentMethod) => {
     setPaymentStatus('processing');
-
+    setProgress(10);
     if (items.length === 0) return;
 
     const firstItem = items[0];
@@ -156,11 +165,24 @@ export default function CheckoutPage() {
     };
 
     try {
-      await purchaseTickets(payload);
-
-      const order = createOrder(values.name, values.email, values.couponCode);
-      setActiveOrder(order);
-
+      const response = await purchaseTickets(payload);
+      if (response && response.ticketGroup) {
+        setTicketGroup(response.ticketGroup);
+        if (channel === 'mpesa') {
+          setProgress(95);
+          setPaymentStatus('awaitingVerification');
+        } else {
+           setProgress(100);
+           setPaymentStatus('success');
+           toast({ title: "Card Payment Initiated", description: "Redirecting to payment provider..."});
+           setTimeout(() => {
+            clearCart();
+            router.push('/');
+           }, 2000);
+        }
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
       console.error("Payment failed", error);
       setPaymentStatus('error');
@@ -181,7 +203,7 @@ export default function CheckoutPage() {
     }
   };
   
-  if (!isClient || (itemCount === 0 && !activeOrder)) {
+  if (!isClient || (itemCount === 0 && !ticketGroup)) {
     return (
       <div className="container py-12 text-center">
         <p>Loading your cart or redirecting...</p>
@@ -196,8 +218,6 @@ export default function CheckoutPage() {
           <Loader2 className="h-12 w-12 animate-spin text-accent" />
           <h3 className="mt-4 text-xl font-semibold">Processing Payment...</h3>
           <p className="mt-2 text-muted-foreground">Please wait, this won't take long.</p>
-          <Progress value={progress} className="w-full mt-4" />
-          <p className='text-sm text-muted-foreground mt-2'>{progress}% complete</p>
         </>
       )}
       {paymentStatus === 'awaitingVerification' && (
