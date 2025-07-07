@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Event, TicketType } from '@/lib/types';
 import {
   Dialog,
@@ -67,23 +67,26 @@ export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicket
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function fetchTickets() {
-      if (isOpen && event) {
-        setIsLoading(true);
-        try {
-          const fetchedTickets = await getEventTickets(event.id);
-          setTickets(fetchedTickets);
-        } catch (error) {
-          console.error("Failed to fetch tickets:", error);
-          toast({ variant: 'destructive', title: 'Error', description: 'Could not load ticket information.' });
-        } finally {
-          setIsLoading(false);
-        }
+  const fetchTickets = useCallback(async () => {
+    if (event) {
+      setIsLoading(true);
+      try {
+        const fetchedTickets = await getEventTickets(event.id);
+        setTickets(fetchedTickets);
+      } catch (error) {
+        console.error("Failed to fetch tickets:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load ticket information.' });
+      } finally {
+        setIsLoading(false);
       }
     }
-    fetchTickets();
-  }, [isOpen, event, toast]);
+  }, [event, toast]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTickets();
+    }
+  }, [isOpen, fetchTickets]);
 
   const handleAddTicket = () => {
     setEditingTicket(null);
@@ -98,81 +101,84 @@ export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicket
   if (!event) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <DialogTitle className="font-headline text-2xl">Manage Tickets</DialogTitle>
-              <DialogDescription>For event: {event.name}</DialogDescription>
+    <>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <DialogTitle className="font-headline text-2xl">Manage Tickets</DialogTitle>
+                <DialogDescription>For event: {event.name}</DialogDescription>
+              </div>
+              <Button onClick={handleAddTicket}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Ticket
+              </Button>
             </div>
-            <Button onClick={handleAddTicket}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Ticket
-            </Button>
+          </DialogHeader>
+
+          <div className="py-4 max-h-[60vh] overflow-y-auto pr-4">
+              {isLoading ? (
+                  <TicketsTableSkeleton />
+              ) : tickets.length > 0 ? (
+                  <Table>
+                      <TableHeader>
+                          <TableRow>
+                              <TableHead>Ticket Name</TableHead>
+                              <TableHead>Price</TableHead>
+                              <TableHead>Qty Available</TableHead>
+                              <TableHead>Sale Dates</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {tickets.map((ticket) => (
+                          <TableRow key={ticket.id}>
+                              <TableCell className="font-medium">{ticket.name}</TableCell>
+                              <TableCell>KES {ticket.price.toFixed(2)}</TableCell>
+                              <TableCell>{ticket.quantityAvailable}</TableCell>
+                              <TableCell>{`${format(new Date(ticket.saleStartDate), 'PP')} - ${format(new Date(ticket.saleEndDate), 'PP')}`}</TableCell>
+                              <TableCell>
+                                  <Badge variant={ticket.status === 'active' ? 'default' : 'secondary'}>{ticket.status}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEditTicket(ticket)}>
+                                      <Edit className="mr-2 h-4 w-4" /> Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                      {ticket.status === 'active' ? <ToggleLeft className="mr-2 h-4 w-4" /> : <ToggleRight className="mr-2 h-4 w-4" />}
+                                      {ticket.status === 'active' ? 'Disable' : 'Enable'}
+                                  </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                              </TableCell>
+                          </TableRow>
+                          ))}
+                      </TableBody>
+                  </Table>
+              ) : (
+                  <div className="text-center py-10 bg-muted rounded-md">
+                      <p className="font-semibold">No tickets found for this event.</p>
+                      <p className="text-sm text-muted-foreground">Click "Add Ticket" to get started.</p>
+                  </div>
+              )}
           </div>
-        </DialogHeader>
-
-        <div className="py-4 max-h-[60vh] overflow-y-auto pr-4">
-            {isLoading ? (
-                <TicketsTableSkeleton />
-            ) : tickets.length > 0 ? (
-                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Ticket Name</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Qty Available</TableHead>
-                            <TableHead>Sale Dates</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {tickets.map((ticket) => (
-                        <TableRow key={ticket.id}>
-                            <TableCell className="font-medium">{ticket.name}</TableCell>
-                            <TableCell>KES {ticket.price.toFixed(2)}</TableCell>
-                            <TableCell>{ticket.quantityAvailable}</TableCell>
-                             <TableCell>{`${format(new Date(ticket.saleStartDate), 'PP')} - ${format(new Date(ticket.saleEndDate), 'PP')}`}</TableCell>
-                            <TableCell>
-                                <Badge variant={ticket.status === 'active' ? 'default' : 'secondary'}>{ticket.status}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEditTicket(ticket)}>
-                                    <Edit className="mr-2 h-4 w-4" /> Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                    {ticket.status === 'active' ? <ToggleLeft className="mr-2 h-4 w-4" /> : <ToggleRight className="mr-2 h-4 w-4" />}
-                                    {ticket.status === 'active' ? 'Disable' : 'Enable'}
-                                </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            ) : (
-                <div className="text-center py-10 bg-muted rounded-md">
-                    <p className="font-semibold">No tickets found for this event.</p>
-                    <p className="text-sm text-muted-foreground">Click "Add Ticket" to get started.</p>
-                </div>
-            )}
-        </div>
-
-         <AddTicketModal 
-            isOpen={addTicketModalOpen} 
-            onOpenChange={setAddTicketModalOpen} 
-            ticket={editingTicket}
-        />
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      <AddTicketModal 
+          isOpen={addTicketModalOpen} 
+          onOpenChange={setAddTicketModalOpen} 
+          ticket={editingTicket}
+          eventId={event.id}
+          onSuccess={fetchTickets}
+      />
+    </>
   );
 }

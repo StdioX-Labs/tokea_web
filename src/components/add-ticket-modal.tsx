@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,6 +27,9 @@ import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
 import type { TicketType } from '@/lib/types';
 import { Separator } from './ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import { createTicket, updateTicket, type CreateTicketPayload, type UpdateTicketPayload } from '@/services/event-service';
 
 const ticketFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -34,6 +37,7 @@ const ticketFormSchema = z.object({
   quantityAvailable: z.coerce.number().int().min(1, 'Quantity must be at least 1.'),
   ticketsToIssue: z.coerce.number().int().min(1, 'Must issue at least 1 ticket.').default(1),
   ticketLimitPerPerson: z.coerce.number().int().min(0, 'Limit must be 0 or more. 0 for unlimited.').default(0),
+  numberOfComplementary: z.coerce.number().int().min(0, 'Must be 0 or more.').default(0),
   saleStartDate: z.date({ required_error: 'Sale start date is required.' }),
   saleEndDate: z.date({ required_error: 'Sale end date is required.' }),
 });
@@ -41,10 +45,16 @@ const ticketFormSchema = z.object({
 interface AddTicketModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onSuccess: () => void;
   ticket?: TicketType | null;
+  eventId: string | null;
 }
 
-export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalProps) {
+export function AddTicketModal({ isOpen, onOpenChange, onSuccess, ticket, eventId }: AddTicketModalProps) {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const mode = ticket ? 'edit' : 'add';
+
   const form = useForm<z.infer<typeof ticketFormSchema>>({
     resolver: zodResolver(ticketFormSchema),
     defaultValues: {
@@ -53,36 +63,76 @@ export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalP
       quantityAvailable: 100,
       ticketsToIssue: 1,
       ticketLimitPerPerson: 0,
+      numberOfComplementary: 0,
     },
   });
 
   useEffect(() => {
-    if (ticket && isOpen) {
-      form.reset({
-        name: ticket.name,
-        price: ticket.price,
-        quantityAvailable: ticket.quantityAvailable,
-        ticketsToIssue: ticket.ticketsToIssue,
-        ticketLimitPerPerson: ticket.ticketLimitPerPerson,
-        saleStartDate: new Date(ticket.saleStartDate),
-        saleEndDate: new Date(ticket.saleEndDate),
-      });
-    } else if (!ticket && isOpen) {
-      form.reset({
-        name: '',
-        price: 0,
-        quantityAvailable: 100,
-        ticketsToIssue: 1,
-        ticketLimitPerPerson: 0,
-        saleStartDate: undefined,
-        saleEndDate: undefined,
-      });
+    if (isOpen) {
+      if (ticket) {
+        form.reset({
+          name: ticket.name,
+          price: ticket.price,
+          quantityAvailable: ticket.quantityAvailable,
+          ticketsToIssue: ticket.ticketsToIssue,
+          ticketLimitPerPerson: ticket.ticketLimitPerPerson,
+          // Since numberOfComplementary is not part of TicketType, we can't pre-fill it for edit.
+          // Defaulting to 0, or you can add it to your TicketType interface.
+          numberOfComplementary: 0, 
+          saleStartDate: new Date(ticket.saleStartDate),
+          saleEndDate: new Date(ticket.saleEndDate),
+        });
+      } else {
+        form.reset({
+          name: '',
+          price: 0,
+          quantityAvailable: 100,
+          ticketsToIssue: 1,
+          ticketLimitPerPerson: 0,
+          numberOfComplementary: 0,
+          saleStartDate: new Date(),
+          saleEndDate: new Date(new Date().setDate(new Date().getDate() + 30)), // Default to 30 days from now
+        });
+      }
     }
-  }, [ticket, form, isOpen]);
+  }, [ticket, isOpen, form]);
 
-  function onSubmit(values: z.infer<typeof ticketFormSchema>) {
-    console.log('Ticket form submitted:', values);
-    onOpenChange(false);
+  async function onSubmit(values: z.infer<typeof ticketFormSchema>) {
+    setIsSubmitting(true);
+    
+    const commonPayload = {
+        ticketName: values.name,
+        ticketPrice: values.price,
+        quantityAvailable: values.quantityAvailable,
+        ticketsToIssue: values.ticketsToIssue,
+        ticketLimitPerPerson: values.ticketLimitPerPerson,
+        numberOfComplementary: values.numberOfComplementary,
+        ticketSaleStartDate: values.saleStartDate.toISOString(),
+        ticketSaleEndDate: values.saleEndDate.toISOString(),
+        isFree: values.price === 0,
+    }
+
+    try {
+      if (mode === 'add' && eventId) {
+        const payload: CreateTicketPayload = {
+            ...commonPayload,
+            event: { id: parseInt(eventId) },
+        };
+        await createTicket(payload);
+        toast({ title: "Success", description: "Ticket created successfully." });
+      } else if (mode === 'edit' && ticket) {
+        const payload: UpdateTicketPayload = commonPayload;
+        await updateTicket(ticket.id, payload);
+        toast({ title: "Success", description: "Ticket updated successfully." });
+      }
+      onSuccess();
+      onOpenChange(false);
+    } catch (error) {
+       console.error(`Failed to ${mode} ticket:`, error);
+       toast({ variant: 'destructive', title: "Error", description: `Failed to ${mode} ticket.` });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -106,7 +156,7 @@ export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalP
                   <FormItem>
                     <FormLabel>Ticket Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. VIP, Early Bird" {...field} />
+                      <Input placeholder="e.g. VIP, Early Bird" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -119,7 +169,7 @@ export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalP
                   <FormItem>
                     <FormLabel>Price</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="0.00" {...field} />
+                      <Input type="number" placeholder="0.00" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -130,14 +180,14 @@ export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalP
             <Separator />
             <h3 className="font-semibold text-foreground">Inventory & Limits</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <FormField
                     control={form.control}
                     name="quantityAvailable"
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Quantity Available</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -147,8 +197,8 @@ export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalP
                     name="ticketsToIssue"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Tickets per purchase</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormLabel>Tickets per sale</FormLabel>
+                        <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
                         <FormDescription className="text-xs">e.g. 2 for a couple's ticket.</FormDescription>
                         <FormMessage />
                     </FormItem>
@@ -160,8 +210,20 @@ export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalP
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Limit per person</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
                         <FormDescription className="text-xs">0 for unlimited.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="numberOfComplementary"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Complementary</FormLabel>
+                        <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
+                        <FormDescription className="text-xs">Number of free tickets.</FormDescription>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -183,6 +245,7 @@ export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalP
                             date={field.value}
                             setDate={field.onChange}
                             className="w-full"
+                             disabled={isSubmitting}
                         />
                         </FormControl>
                         <FormMessage />
@@ -200,6 +263,7 @@ export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalP
                             date={field.value}
                             setDate={field.onChange}
                             className="w-full"
+                             disabled={isSubmitting}
                         />
                         </FormControl>
                         <FormMessage />
@@ -210,11 +274,14 @@ export function AddTicketModal({ isOpen, onOpenChange, ticket }: AddTicketModalP
 
             <DialogFooter className="pt-4">
               <DialogClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" disabled={isSubmitting}>
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit">Save Ticket</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {mode === 'add' ? 'Save Ticket' : 'Save Changes'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

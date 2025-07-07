@@ -94,6 +94,24 @@ export interface CreateEventPayload {
 export interface UpdateEventPayload extends Omit<CreateEventPayload, 'users' | 'company'> {}
 
 
+// Interface for creating a ticket
+export interface CreateTicketPayload {
+  event: { id: number };
+  ticketName: string;
+  ticketPrice: number;
+  quantityAvailable: number;
+  ticketsToIssue: number;
+  ticketLimitPerPerson: number;
+  numberOfComplementary: number;
+  ticketSaleStartDate: string;
+  ticketSaleEndDate: string;
+  isFree: boolean;
+}
+
+// Interface for updating a ticket
+export interface UpdateTicketPayload extends Omit<CreateTicketPayload, 'event'> {}
+
+
 // Transformer functions to convert API data into our app's data types
 function transformApiTicketTypeToTicketType(apiTicket: ApiTicketType): TicketType {
   return {
@@ -277,4 +295,24 @@ export async function activateEvent(eventId: string): Promise<any> {
 export async function getEventTickets(eventId: string): Promise<TicketType[]> {
     const response = await apiClient<{ tickets: ApiAdminTicketType[] }>(`/event/ticket/get?eventId=${eventId}`);
     return response.tickets.map(transformApiAdminTicketToTicketType);
+}
+
+/**
+ * Creates a new ticket for an event.
+ */
+export async function createTicket(payload: CreateTicketPayload): Promise<any> {
+    return apiClient('/event/ticket/create', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+}
+
+/**
+ * Updates an existing ticket.
+ */
+export async function updateTicket(ticketId: string, payload: UpdateTicketPayload): Promise<any> {
+    return apiClient(`/event/ticket/update?ticketId=${ticketId}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
 }
