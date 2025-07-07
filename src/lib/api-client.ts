@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://kong-c7447f26ccus2ngvp.kongcloud.dev/api/v1';
+const API_BASE_URL = 'https://api.soldoutafrica.store';
 
 // Basic Auth credentials
 const username = '254717286026';
