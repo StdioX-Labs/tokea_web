@@ -2,30 +2,58 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useCart } from '@/context/cart-provider';
 import type { Order } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { Ticket, Calendar, User, Mail } from 'lucide-react';
+import { Ticket, Calendar, User, Mail, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { getPublicOrderDetails } from '@/services/event-service';
+import { useToast } from '@/hooks/use-toast';
 
 export default function OrderDetailsPage({ params }: { params: { orderId: string } }) {
-  const { getOrder } = useCart();
-  const [order, setOrder] = useState<Order | null | undefined>(undefined);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const foundOrder = getOrder(params.orderId);
-    setOrder(foundOrder);
-  }, [getOrder, params.orderId]);
+    const fetchOrder = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedOrder = await getPublicOrderDetails(params.orderId);
+        if (fetchedOrder) {
+          setOrder(fetchedOrder);
+        } else {
+          notFound();
+        }
+      } catch (error) {
+        console.error("Failed to fetch order details:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error loading order',
+          description: 'We could not find the order you were looking for.',
+        });
+        notFound();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchOrder();
+  }, [params.orderId, toast]);
 
-  if (order === undefined) {
-    return <div className='container py-12 text-center'>Loading order details...</div>;
+  if (isLoading) {
+    return (
+        <div className="container py-12 text-center flex flex-col items-center justify-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p>Loading order details...</p>
+      </div>
+    );
   }
 
-  if (order === null) {
-    notFound();
+  if (!order) {
+    return notFound();
   }
 
   return (
@@ -50,8 +78,12 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
                 <div className="grid md:grid-cols-5 gap-8 mb-8">
                     <div className='md:col-span-2 space-y-2'>
                         <h3 className="font-semibold mb-2">Order Information</h3>
-                        <p className='flex items-center gap-2 text-sm'><User className='w-4 h-4 text-muted-foreground' />{order.customerName}</p>
-                        <p className='flex items-center gap-2 text-sm'><Mail className='w-4 h-4 text-muted-foreground' />{order.customerEmail}</p>
+                        {order.customerName && (
+                          <p className='flex items-center gap-2 text-sm'><User className='w-4 h-4 text-muted-foreground' />{order.customerName}</p>
+                        )}
+                        {order.customerEmail && (
+                            <p className='flex items-center gap-2 text-sm'><Mail className='w-4 h-4 text-muted-foreground' />{order.customerEmail}</p>
+                        )}
                         <p className='flex items-center gap-2 text-sm'><Calendar className='w-4 h-4 text-muted-foreground' />{format(new Date(order.orderDate), "PPP, p")}</p>
                     </div>
                      <div className='md:col-span-3 relative aspect-video overflow-hidden rounded-lg min-h-[200px] bg-muted'>

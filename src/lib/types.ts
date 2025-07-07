@@ -70,8 +70,8 @@ export interface CartItem {
 
 export interface Order {
   id: string; // This will be the ticketGroup code
-  customerName: string;
-  customerEmail: string;
+  customerName?: string;
+  customerEmail?: string;
   tickets: PurchasedTicket[];
   total: number;
   orderDate: string;

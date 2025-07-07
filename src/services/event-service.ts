@@ -2,7 +2,7 @@
 'use server';
 
 import { apiClient } from '@/lib/api-client';
-import type { Event, TicketType, PurchasedTicket } from '@/lib/types';
+import type { Event, TicketType, PurchasedTicket, Order } from '@/lib/types';
 
 interface ApiTicketType {
   id: number;
@@ -285,6 +285,32 @@ export async function checkPaymentStatus(ticketGroup: string): Promise<{
         };
     } catch (error) {
         console.log(`Polling for ${ticketGroup}: Not found or error. Continuing.`);
+        return null;
+    }
+}
+
+export async function getPublicOrderDetails(orderId: string): Promise<Order | null> {
+    try {
+        const response = await apiClient<ApiTicketGroupStatusResponse>(`/event/ticket/group/get?ticketGroup=${orderId}`);
+
+        if (!response || !response.tickets || response.tickets.length === 0) {
+            return null;
+        }
+
+        const firstTicket = response.tickets[0];
+
+        const order: Order = {
+            id: firstTicket.ticketGroupCode,
+            eventName: response.event,
+            posterUrl: response.posterUrl,
+            total: response.ticketPrice,
+            tickets: response.tickets.map(transformApiTicketInGroup),
+            orderDate: firstTicket.createdAt,
+        };
+        return order;
+
+    } catch (error) {
+        console.error(`Failed to fetch public order details for ${orderId}:`, error);
         return null;
     }
 }
