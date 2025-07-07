@@ -26,7 +26,7 @@ export default async function DashboardPage() {
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">KES 45,231.89</div>
+                        <div className="text-2xl font-bold font-headline">KES 45,231.89</div>
                         <p className="text-xs text-muted-foreground">+20.1% from last month</p>
                     </CardContent>
                 </Card>
@@ -36,7 +36,7 @@ export default async function DashboardPage() {
                         <Ticket className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">+2350</div>
+                        <div className="text-2xl font-bold font-headline">+2350</div>
                         <p className="text-xs text-muted-foreground">+180.1% from last month</p>
                     </CardContent>
                 </Card>
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">+573</div>
+                        <div className="text-2xl font-bold font-headline">+573</div>
                         <p className="text-xs text-muted-foreground">+19% from last month</p>
                     </CardContent>
                 </Card>
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
                         <Activity className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{activeEventsCount}</div>
+                        <div className="text-2xl font-bold font-headline">{activeEventsCount}</div>
                         <p className="text-xs text-muted-foreground">Upcoming events</p>
                     </CardContent>
                 </Card>
