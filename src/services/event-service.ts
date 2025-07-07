@@ -1,3 +1,5 @@
+'use server';
+
 import { apiClient } from '@/lib/api-client';
 import type { Event, TicketType } from '@/lib/types';
 
