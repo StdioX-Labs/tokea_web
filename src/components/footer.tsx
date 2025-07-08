@@ -51,8 +51,8 @@ export default function Footer() {
 
         <div className="flex flex-col gap-3">
           <h3 className="font-headline font-semibold text-lg mb-1">Navigate</h3>
-          <FooterLink href="#">About</FooterLink>
-          <FooterLink href="#">Contact</FooterLink>
+          <FooterLink href="/about">About</FooterLink>
+          <FooterLink href="/contact">Contact</FooterLink>
           <FooterLink href="#">Terms of Service</FooterLink>
           <FooterLink href="#">Privacy Policy</FooterLink>
         </div>
