@@ -337,8 +337,8 @@ export async function activateEvent(eventId: string): Promise<any> {
 }
 
 export async function getEventTickets(eventId: string): Promise<TicketType[]> {
-    const response = await apiClient<{ tickets: ApiAdminTicketType[] }>(`/event/ticket/get?eventId=${eventId}`);
-    return response.tickets.map(transformApiAdminTicketToTicketType);
+    const response = await apiClient<{ ticket: ApiAdminTicketType[] }>(`/event/ticket/get?eventId=${eventId}`);
+    return response.ticket.map(transformApiAdminTicketToTicketType);
 }
 
 export async function createTicket(payload: CreateTicketPayload): Promise<any> {
