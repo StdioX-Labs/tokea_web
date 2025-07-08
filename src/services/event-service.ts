@@ -349,7 +349,7 @@ export async function createTicket(payload: CreateTicketPayload): Promise<any> {
 }
 
 export async function updateTicket(ticketId: string, payload: UpdateTicketPayload): Promise<any> {
-    return apiClient(`/event/ticket/update?ticketId=${ticketId}`, {
+    return apiClient(`/ticket/update?ticketId=${ticketId}`, {
         method: 'POST',
         body: JSON.stringify(payload)
     });
