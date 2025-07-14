@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Twitter, Instagram, Facebook } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
+import Logo from './logo';
 
 const FooterLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
   <Link href={href} className="text-muted-foreground transition-colors hover:text-foreground">
@@ -31,9 +32,7 @@ export default function Footer() {
       <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-y-10 gap-x-8 py-20">
         <div className="flex flex-col gap-4 md:col-span-2">
             <Link href="/" className="flex items-center space-x-2">
-                <span className="font-headline text-2xl font-bold tracking-tighter">
-                Summer
-                </span>
+                <Logo />
             </Link>
             <p className="text-sm text-muted-foreground max-w-sm">
                 Made by{' '}

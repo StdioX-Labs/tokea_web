@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AdminFooter from '@/components/admin-footer';
+import Logo from '@/components/logo';
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -39,9 +40,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2">
-            <h2 className="font-headline text-2xl font-bold tracking-tighter text-sidebar-foreground">
-              Summer
-            </h2>
+            <Logo />
             <span className="text-xs rounded-full px-2 py-0.5 bg-sidebar-accent text-sidebar-accent-foreground">
               Admin
             </span>

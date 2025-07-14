@@ -7,7 +7,7 @@ import Footer from '@/components/footer';
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'Summer - Event Tickets',
+  title: 'Tokea - Event Tickets',
   description: 'Your one-stop shop for the hottest summer events.',
 };
 

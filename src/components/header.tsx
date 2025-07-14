@@ -8,6 +8,7 @@ import CartSheet from './cart-sheet';
 import { useState } from 'react';
 import SearchDrawer from './search-drawer';
 import { usePathname } from 'next/navigation';
+import Logo from './logo';
 
 export default function Header() {
   const { itemCount, setCartOpen } = useCart();
@@ -23,9 +24,7 @@ export default function Header() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            <span className="font-headline text-xl font-bold tracking-tighter">
-              Summer
-            </span>
+            <Logo />
           </Link>
           <div className="flex flex-1 items-center justify-end space-x-2">
             <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>

@@ -80,7 +80,7 @@ export default function Home() {
     { text: 'the' },
     { text: 'Vibe' },
     { text: 'of' },
-    { text: 'Summer', className: 'text-accent' },
+    { text: 'Tokea', className: 'text-accent' },
   ];
 
   return (
