@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -25,15 +26,89 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AdminFooter from '@/components/admin-footer';
 import Logo from '@/components/logo';
 
+// Session timeout in milliseconds (5 hours)
+const SESSION_TIMEOUT = 5 * 60 * 60 * 1000;
+
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [userMobile, setUserMobile] = useState<string>('Admin User');
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Check for session expiration and get user mobile number
+  useEffect(() => {
+    const checkSession = () => {
+      try {
+        const adminUser = localStorage.getItem('adminUser');
+        if (!adminUser) {
+          // No user data found, redirect to login
+          router.push('/admin/login');
+          return;
+        }
+
+        const userData = JSON.parse(adminUser);
+
+        // Check if session has expired (5 hours)
+        if (userData.loginTime) {
+          const currentTime = Date.now();
+          const sessionAge = currentTime - userData.loginTime;
+
+          if (sessionAge > SESSION_TIMEOUT) {
+            // Session expired, log user out
+            setSessionExpired(true);
+            localStorage.removeItem('adminUser');
+            router.push('/admin/login');
+            return;
+          }
+
+          // Update the login time to extend the session on activity
+          userData.loginTime = currentTime;
+          localStorage.setItem('adminUser', JSON.stringify(userData));
+        }
+
+        // Set user mobile if available
+        if (userData.mobileNumber) {
+          setUserMobile(userData.mobileNumber);
+        }
+      } catch (error) {
+        console.error('Error reading user data from localStorage:', error);
+      }
+    };
+
+    // Check session on mount
+    checkSession();
+
+    // Set up periodic check every minute
+    const interval = setInterval(checkSession, 60 * 1000);
+
+    // Set up event listeners for user activity to extend session
+    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    const handleUserActivity = checkSession;
+
+    activityEvents.forEach(event => {
+      window.addEventListener(event, handleUserActivity);
+    });
+
+    // Cleanup
+    return () => {
+      clearInterval(interval);
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleUserActivity);
+      });
+    };
+  }, [router]);
 
   const handleLogout = () => {
-    // Here you would typically clear the user session
+    // Clear user session
+    localStorage.removeItem('adminUser');
     console.log('Logging out...');
-    router.push('/');
+    router.push('/admin/login');
   };
+
+  // If session expired, don't render the layout
+  if (sessionExpired) {
+    return null;
+  }
 
   return (
     <SidebarProvider>
@@ -101,10 +176,10 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
         <header className="flex h-14 items-center justify-between border-b bg-background px-4 lg:justify-end">
           <SidebarTrigger className="lg:hidden" />
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium">Admin User</span>
+            <span className="text-sm font-medium">{userMobile}</span>
             <Avatar className="h-8 w-8">
               <AvatarImage src="https://github.com/shadcn.png" alt="@admin" />
-              <AvatarFallback>AU</AvatarFallback>
+              <AvatarFallback>{userMobile.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
           </div>
         </header>

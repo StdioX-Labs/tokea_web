@@ -120,7 +120,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
           eventEndDate: values.endDate?.toISOString(),
           eventCategory: { id: parseInt(values.categoryId) },
           users: { id: 1 }, // Hardcoded as requested
-          company: { id: 1 }, // Hardcoded as requested
+          company: { id: 54 }, // Hardcoded as requested
         };
         await createEvent(payload);
         toast({ title: "Success", description: "Event created successfully." });
