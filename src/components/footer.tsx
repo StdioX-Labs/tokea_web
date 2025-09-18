@@ -35,16 +35,16 @@ export default function Footer() {
                 <Logo />
             </Link>
             <p className="text-sm text-muted-foreground max-w-sm">
-                Made by{' '}
+                Powered by {"      "}
                 <a 
                     href="https://soldout.africa" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="font-medium text-foreground underline-offset-4 hover:underline"
                 >
-                    SoldoutAfrica
+                    SoldOutAfrica
                 </a>
-                . Your one-stop shop for the hottest summer events.
+
             </p>
         </div>
 

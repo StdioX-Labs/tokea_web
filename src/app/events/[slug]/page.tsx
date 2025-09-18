@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -18,6 +18,10 @@ import type { Event } from '@/lib/types';
 import { getEventBySlug } from '@/services/event-service';
 
 export default function EventDetailsPage({ params }: { params: { slug: string } }) {
+  // Unwrap the params object using React.use()
+  const resolvedParams = use(params);
+  const slug = resolvedParams.slug;
+
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +29,7 @@ export default function EventDetailsPage({ params }: { params: { slug: string } 
   useEffect(() => {
     async function fetchEvent() {
       try {
-        const fetchedEvent = await getEventBySlug(params.slug);
+        const fetchedEvent = await getEventBySlug(slug);
         if (!fetchedEvent) {
           notFound();
         }
@@ -38,7 +42,7 @@ export default function EventDetailsPage({ params }: { params: { slug: string } 
       }
     }
     fetchEvent();
-  }, [params.slug]);
+  }, [slug]);
 
 
   if (isLoading) {
