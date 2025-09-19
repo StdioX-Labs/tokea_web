@@ -86,6 +86,41 @@ export default function LoginPage() {
     }
   }
 
+  // Helper to login user after OTP validation
+  async function loginUser(mobileNumber: string) {
+    const API_BASE_URL = 'https://api.soldoutafrica.store/api/v1';
+    const password = 's0ascAnn3r@56YearsLater!';
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          mobile_number: mobileNumber,
+          password,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+      const data = await response.json();
+      if (data.status === true && data.user && data.user.length > 0) {
+        // Store user info and login timestamp for session timeout
+        localStorage.setItem('adminUser', JSON.stringify({
+          ...data.user[0],
+          isLoggedIn: true,
+          loginTime: Date.now(),
+        }));
+        return { success: true, user: data.user[0] };
+      }
+      return { success: false, message: data.message || 'Login failed' };
+    } catch (error) {
+      return { success: false, message: 'Login failed' };
+    }
+  }
+
   async function handleVerifyOTP(e: React.FormEvent) {
     e.preventDefault();
 
@@ -105,19 +140,21 @@ export default function LoginPage() {
       const result = await verifyOtpAction(otpValue, mobileNumber);
 
       if (result.success) {
-        // Store user info in localStorage with login timestamp for 5-hour session
-        localStorage.setItem('adminUser', JSON.stringify({
-          mobileNumber: mobileNumber,
-          isLoggedIn: true,
-          loginTime: Date.now(), // Add timestamp for session tracking
-        }));
-
-        toast({
-          title: 'Login Successful',
-          description: 'Welcome to the admin dashboard!',
-        });
-
-        router.push('/admin/dashboard');
+        // Now login the user with default password
+        const loginResult = await loginUser(mobileNumber);
+        if (loginResult.success) {
+          toast({
+            title: 'Login Successful',
+            description: `Welcome, ${loginResult.user.fullName}!`,
+          });
+          router.push('/admin/dashboard');
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: loginResult.message || 'Could not log in after OTP validation.',
+          });
+        }
       } else {
         toast({
           variant: 'destructive',

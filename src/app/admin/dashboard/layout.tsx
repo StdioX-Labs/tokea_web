@@ -33,6 +33,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [userMobile, setUserMobile] = useState<string>('Admin User');
+  const [userName, setUserName] = useState<string>('Admin User');
   const [sessionExpired, setSessionExpired] = useState(false);
 
   // Check for session expiration and get user mobile number
@@ -66,9 +67,11 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
           localStorage.setItem('adminUser', JSON.stringify(userData));
         }
 
-        // Set user mobile if available
-        if (userData.mobileNumber) {
-          setUserMobile(userData.mobileNumber);
+        // Set user name if available
+        if (userData.fullName) {
+          setUserName(userData.fullName);
+        } else if (userData.mobileNumber) {
+          setUserName(userData.mobileNumber);
         }
       } catch (error) {
         console.error('Error reading user data from localStorage:', error);
@@ -161,25 +164,20 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-             <SidebarMenuItem>
-                <SidebarMenuButton onClick={handleLogout} tooltip="Log Out">
-                    <LogOut />
-                    <span>Log Out</span>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+        <SidebarFooter className="flex items-center justify-between p-2 border-t">
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-1" /> Logout
+          </Button>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 items-center justify-between border-b bg-background px-4 lg:justify-end">
           <SidebarTrigger className="lg:hidden" />
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium">{userMobile}</span>
+            <span className="text-sm font-medium">{userName}</span>
             <Avatar className="h-8 w-8">
               <AvatarImage src="https://github.com/shadcn.png" alt="@admin" />
-              <AvatarFallback>{userMobile.substring(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarFallback>{userName.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
           </div>
         </header>
