@@ -35,13 +35,18 @@ import { useToast } from '@/hooks/use-toast';
 import { createEvent, updateEvent, type CreateEventPayload, type UpdateEventPayload } from '@/services/event-service';
 
 const eventFormSchema = z.object({
-  name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
-  description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  posterImage: z.string().min(1, { message: 'Please upload a poster image.' }),
-  categoryId: z.string({ required_error: 'Please select a category.' }),
-  location: z.string().min(3, { message: 'Location is required.' }),
-  date: z.date({ required_error: 'Event start date is required.' }),
-  endDate: z.date().optional(),
+  eventName: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
+  eventDescription: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
+  eventPosterUrl: z.string().min(1, { message: 'Please upload a poster image.' }),
+  eventLocation: z.string().min(3, { message: 'Location is required.' }),
+  eventStartDate: z.date({ required_error: 'Event start date is required.' }),
+  eventEndDate: z.date().optional(),
+  startTimeHour: z.string().default('12'),
+  startTimeMinute: z.string().default('00'),
+  startTimePeriod: z.enum(['AM', 'PM']).default('PM'),
+  endTimeHour: z.string().default('12'),
+  endTimeMinute: z.string().default('00'),
+  endTimePeriod: z.enum(['AM', 'PM']).default('PM'),
 });
 
 
@@ -68,39 +73,101 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
   const form = useForm<z.infer<typeof eventFormSchema>>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
-      name: '',
-      description: '',
-      posterImage: '',
-      location: '',
+      eventName: '',
+      eventDescription: '',
+      eventPosterUrl: '',
+      eventLocation: '',
+      startTimeHour: '12',
+      startTimeMinute: '00',
+      startTimePeriod: 'PM',
+      endTimeHour: '12',
+      endTimeMinute: '00',
+      endTimePeriod: 'PM',
     },
   });
 
   const isViewMode = mode === 'view';
-  const posterUrl = form.watch('posterImage');
+  const posterUrl = form.watch('eventPosterUrl');
 
   useEffect(() => {
     if (!isOpen) {
       form.reset();
       setIsSubmitting(false);
     } else if (event) {
+      // Parse time from ISO timestamps in eventStartDate and eventEndDate
+      let startTimeHour = "12";
+      let startTimeMinute = "00";
+      let startTimePeriod = "PM";
+      let endTimeHour = "12";
+      let endTimeMinute = "00";
+      let endTimePeriod = "PM";
+
+      if (event.eventStartDate) {
+        const startDate = new Date(event.eventStartDate);
+        const hours = startDate.getUTCHours();
+        const minutes = startDate.getUTCMinutes();
+
+        startTimeHour = hours % 12 === 0 ? '12' : String(hours % 12);
+        startTimeMinute = String(minutes).padStart(2, '0');
+        startTimePeriod = hours >= 12 ? 'PM' : 'AM';
+      } else if (event.time) {
+        // Fallback to time string format if available
+        const timeParts = event.time.match(/(\d+):(\d+)\s+(AM|PM)/i);
+        if (timeParts) {
+          startTimeHour = timeParts[1];
+          startTimeMinute = timeParts[2];
+          startTimePeriod = timeParts[3].toUpperCase() as 'AM' | 'PM';
+        }
+      }
+
+      if (event.eventEndDate) {
+        const endDate = new Date(event.eventEndDate);
+        const hours = endDate.getUTCHours();
+        const minutes = endDate.getUTCMinutes();
+
+        endTimeHour = hours % 12 === 0 ? '12' : String(hours % 12);
+        endTimeMinute = String(minutes).padStart(2, '0');
+        endTimePeriod = hours >= 12 ? 'PM' : 'AM';
+      } else if (event.endTime) {
+        // Fallback to endTime string format if available
+        const endTimeParts = event.endTime.match(/(\d+):(\d+)\s+(AM|PM)/i);
+        if (endTimeParts) {
+          endTimeHour = endTimeParts[1];
+          endTimeMinute = endTimeParts[2];
+          endTimePeriod = endTimeParts[3].toUpperCase() as 'AM' | 'PM';
+        }
+      }
+
       form.reset({
-        name: event.name,
-        description: event.description,
-        posterImage: event.posterImage,
+        eventName: event.eventName || event.name,
+        eventDescription: event.eventDescription || event.description,
+        eventPosterUrl: event.eventPosterUrl || event.posterImage,
         categoryId: event.category?.id || '1',
-        location: event.location,
-        date: new Date(event.date),
-        endDate: event.endDate ? new Date(event.endDate) : undefined,
+        eventLocation: event.eventLocation || event.location,
+        eventStartDate: event.eventStartDate ? new Date(event.eventStartDate) : new Date(event.date),
+        eventEndDate: event.eventEndDate ? new Date(event.eventEndDate) : event.endDate ? new Date(event.endDate) : undefined,
+        startTimeHour,
+        startTimeMinute,
+        startTimePeriod,
+        endTimeHour,
+        endTimeMinute,
+        endTimePeriod,
       });
     } else {
       form.reset({
-        name: '',
-        description: '',
-        posterImage: '',
+        eventName: '',
+        eventDescription: '',
+        eventPosterUrl: '',
         categoryId: undefined,
-        location: '',
-        date: undefined,
-        endDate: undefined,
+        eventLocation: '',
+        eventStartDate: undefined,
+        eventEndDate: undefined,
+        startTimeHour: '12',
+        startTimeMinute: '00',
+        startTimePeriod: 'PM',
+        endTimeHour: '12',
+        endTimeMinute: '00',
+        endTimePeriod: 'PM',
       });
     }
   }, [event, form, isOpen]);
@@ -110,31 +177,61 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
     setIsSubmitting(true);
     
     try {
+      // Convert form time values to hours and minutes
+      let startHour = parseInt(values.startTimeHour);
+      if (values.startTimePeriod === 'PM' && startHour !== 12) {
+        startHour += 12;
+      } else if (values.startTimePeriod === 'AM' && startHour === 12) {
+        startHour = 0;
+      }
+      const startMinute = parseInt(values.startTimeMinute);
+
+      let endHour = parseInt(values.endTimeHour);
+      if (values.endTimePeriod === 'PM' && endHour !== 12) {
+        endHour += 12;
+      } else if (values.endTimePeriod === 'AM' && endHour === 12) {
+        endHour = 0;
+      }
+      const endMinute = parseInt(values.endTimeMinute);
+
+      // Create proper date objects with the combined date and time
+      // First clone the date objects to avoid modifying the original values
+      const startDate = new Date(values.eventStartDate);
+      // Make sure we're setting UTC hours to maintain consistency with the incoming ISO format
+      startDate.setUTCHours(startHour, startMinute, 0, 0);
+
+      let endDate = values.eventEndDate ? new Date(values.eventEndDate) : null;
+      if (endDate) {
+        endDate.setUTCHours(endHour, endMinute, 0, 0);
+      }
+
       if (mode === 'add') {
-        const payload: CreateEventPayload = {
-          eventName: values.name,
-          eventDescription: values.description,
-          eventPosterUrl: values.posterImage,
-          eventLocation: values.location,
-          eventStartDate: values.date.toISOString(),
-          eventEndDate: values.endDate?.toISOString(),
-          eventCategory: { id: parseInt(values.categoryId) },
-          users: { id: 1 }, // Hardcoded as requested
-          company: { id: 54 }, // Hardcoded as requested
+        // Only include the specified fields in the payload
+        const payload = {
+          eventName: values.eventName,
+          eventDescription: values.eventDescription,
+          eventPosterUrl: values.eventPosterUrl,
+          eventLocation: values.eventLocation,
+          eventStartDate: startDate.toISOString(), // This will include both the date and time
+          eventEndDate: endDate?.toISOString(), // This will include both the date and time
+          ticketSaleStartDate: startDate.toISOString(),
+          ticketSaleEndDate: endDate?.toISOString(),
         };
-        await createEvent(payload);
+        await createEvent(payload as CreateEventPayload);
         toast({ title: "Success", description: "Event created successfully." });
       } else if (mode === 'edit' && event) {
-        const payload: UpdateEventPayload = {
-            eventName: values.name,
-            eventDescription: values.description,
-            eventPosterUrl: values.posterImage,
-            eventLocation: values.location,
-            eventStartDate: values.date.toISOString(),
-            eventEndDate: values.endDate?.toISOString(),
-            eventCategory: { id: parseInt(values.categoryId) },
+        // Only include the specified fields in the payload
+        const payload = {
+          eventName: values.eventName,
+          eventDescription: values.eventDescription,
+          eventPosterUrl: values.eventPosterUrl,
+          eventLocation: values.eventLocation,
+          eventStartDate: startDate.toISOString(),
+          eventEndDate: endDate?.toISOString(),
+          ticketSaleStartDate: event.ticketSaleStartDate || startDate.toISOString(),
+          ticketSaleEndDate: event.ticketSaleEndDate || endDate?.toISOString(),
         };
-        await updateEvent(event.id, payload);
+        await updateEvent(event.id, payload as UpdateEventPayload);
         toast({ title: "Success", description: "Event updated successfully." });
       }
       onSuccess();
@@ -164,7 +261,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
               <div className="md:col-span-3 space-y-6">
                  <FormField
                   control={form.control}
-                  name="name"
+                  name="eventName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Event Name</FormLabel>
@@ -177,7 +274,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
                 />
                  <FormField
                   control={form.control}
-                  name="description"
+                  name="eventDescription"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Description</FormLabel>
@@ -196,7 +293,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
                 {!isViewMode && (
                   <FormField
                     control={form.control}
-                    name="posterImage"
+                    name="eventPosterUrl"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Event Poster</FormLabel>
@@ -260,7 +357,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
               />
                <FormField
                 control={form.control}
-                name="location"
+                name="eventLocation"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Location</FormLabel>
@@ -276,7 +373,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                     control={form.control}
-                    name="date"
+                    name="eventStartDate"
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Event Start Date</FormLabel>
@@ -285,16 +382,16 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
                             date={field.value}
                             setDate={field.onChange}
                             className="w-full"
-                             disabled={isViewMode || isSubmitting}
+                            disabled={isViewMode || isSubmitting}
                         />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
                 />
-                 <FormField
+                <FormField
                     control={form.control}
-                    name="endDate"
+                    name="eventEndDate"
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Event End Date</FormLabel>
@@ -310,6 +407,129 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
                     </FormItem>
                     )}
                 />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormItem>
+                <FormLabel>Event Time</FormLabel>
+                <div className="flex items-center gap-2">
+                  <FormField
+                    control={form.control}
+                    name="startTimeHour"
+                    render={({ field }) => (
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="HH"
+                          {...field}
+                          disabled={isViewMode || isSubmitting}
+                          maxLength={2}
+                          className="w-16"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <span className="text-center">:</span>
+                  <FormField
+                    control={form.control}
+                    name="startTimeMinute"
+                    render={({ field }) => (
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="MM"
+                          {...field}
+                          disabled={isViewMode || isSubmitting}
+                          maxLength={2}
+                          className="w-16"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="startTimePeriod"
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
+                        disabled={isViewMode || isSubmitting}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-20">
+                            <SelectValue placeholder="AM/PM" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="AM">AM</SelectItem>
+                          <SelectItem value="PM">PM</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </FormItem>
+              <FormItem>
+                <FormLabel>End Time</FormLabel>
+                <div className="flex items-center gap-2">
+                  <FormField
+                    control={form.control}
+                    name="endTimeHour"
+                    render={({ field }) => (
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="HH"
+                          {...field}
+                          disabled={isViewMode || isSubmitting}
+                          maxLength={2}
+                          className="w-16"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <span className="text-center">:</span>
+                  <FormField
+                    control={form.control}
+                    name="endTimeMinute"
+                    render={({ field }) => (
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="MM"
+                          {...field}
+                          disabled={isViewMode || isSubmitting}
+                          maxLength={2}
+                          className="w-16"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="endTimePeriod"
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
+                        disabled={isViewMode || isSubmitting}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-20">
+                            <SelectValue placeholder="AM/PM" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="AM">AM</SelectItem>
+                          <SelectItem value="PM">PM</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </FormItem>
             </div>
 
             <DialogFooter className="pt-4">

@@ -167,12 +167,12 @@ export default function CheckoutPage() {
         throw new Error(`Some tickets are no longer available: ${invalidTickets.map(t => t.ticketTypeName).join(', ')}`);
       }
 
-      // Use 'celcom' as the channel which has been tested to work
+      // Use 'vaspro' as the payment channel
       const payload: PurchasePayload = {
         eventId: Number(firstItem.eventId),
         amountDisplayed: cartTotal,
         coupon_code: values.couponCode || "",
-        channel: "celcom",  // Using the channel that works in your test
+        channel: "vaspro",  // Changed from celcom to vaspro as requested
         customer: {
           email: values.email,
           mobile_number: paymentPhoneNumber,

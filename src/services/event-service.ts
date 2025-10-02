@@ -565,7 +565,7 @@ export async function createEvent(payload: CreateEventPayload): Promise<any> {
     });
 }
 
-export async function updateEvent(eventId: string, payload: UpdateEventPayload): Promise<any> {
+export async function updateEvent(eventId: string, payload: any): Promise<any> {
     return apiClient(`/event/update?eventId=${eventId}`, {
         method: 'POST',
         body: JSON.stringify(payload)
