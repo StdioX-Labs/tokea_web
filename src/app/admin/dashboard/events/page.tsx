@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, PlusCircle, Power, PowerOff } from 'lucide-react';
-import { getCompanyEvents, activateEvent } from '@/services/event-service';
+import { getUserEvents, activateEvent } from '@/services/event-service';
 import { format } from 'date-fns';
 import type { Event } from '@/lib/types';
 import { AddEventModal } from '@/components/add-event-modal';
@@ -76,11 +76,12 @@ export default function EventsPage() {
   const fetchEvents = useCallback(async () => {
     setIsLoading(true);
     try {
-      const fetchedEvents = await getCompanyEvents();
+      // Using getUserEvents with userId=3 as requested
+      const fetchedEvents = await getUserEvents('3');
       setEvents(fetchedEvents);
     } catch (error) {
-      console.error("Failed to fetch company events:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch company events.' });
+      console.error("Failed to fetch user events:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch events.' });
     } finally {
       setIsLoading(false);
     }

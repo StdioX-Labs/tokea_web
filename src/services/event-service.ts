@@ -293,6 +293,87 @@ function transformApiNewEventToEvent(apiEvent: ApiNewEvent): Event {
   };
 }
 
+interface ApiUserEvent {
+  id: number;
+  eventName: string;
+  eventDescription: string;
+  eventPosterUrl: string;
+  eventCategoryId: number;
+  ticketSaleStartDate: string;
+  ticketSaleEndDate: string;
+  eventLocation: string;
+  eventStartDate: string;
+  eventEndDate: string;
+  isActive: boolean;
+  tickets: {
+    id: number;
+    ticketName: string;
+    ticketPrice: number;
+    quantityAvailable: number;
+    soldQuantity: number;
+    isActive: boolean;
+    ticketsToIssue: number;
+    isSoldOut: boolean;
+    ticketLimitPerPerson: number;
+    numberOfComplementary: number;
+    ticketSaleStartDate: string;
+    ticketSaleEndDate: string;
+    isFree: boolean;
+    ticketStatus: string;
+    createAt: string;
+  }[];
+  createdById: number;
+  companyId: number;
+  companyName: string;
+  comission: number;
+  category: string;
+  date: string;
+  time: string;
+  isFeatured: boolean;
+  price: number;
+  slug: string;
+}
+
+interface ApiUserEventsResponse {
+  message: string;
+  events: ApiUserEvent[];
+  status: boolean;
+}
+
+function transformApiUserEventToEvent(apiEvent: ApiUserEvent): Event {
+  return {
+    id: String(apiEvent.id),
+    slug: apiEvent.slug || String(apiEvent.id),
+    name: apiEvent.eventName,
+    date: apiEvent.eventStartDate,
+    endDate: apiEvent.eventEndDate || undefined,
+    location: apiEvent.eventLocation,
+    posterImage: apiEvent.eventPosterUrl,
+    posterImageHint: apiEvent.category?.toLowerCase() || 'event poster',
+    description: apiEvent.eventDescription,
+    isFeatured: apiEvent.isFeatured,
+    isActive: apiEvent.isActive,
+    artists: [],
+    venue: {
+      name: apiEvent.eventLocation,
+      address: '',
+      capacity: 0,
+    },
+    ticketTypes: apiEvent.tickets?.map(ticket => ({
+      id: String(ticket.id),
+      name: ticket.ticketName,
+      price: ticket.ticketPrice || 0,
+      quantityAvailable: ticket.quantityAvailable,
+      ticketsToIssue: ticket.ticketsToIssue,
+      ticketLimitPerPerson: ticket.ticketLimitPerPerson,
+      saleStartDate: ticket.ticketSaleStartDate,
+      saleEndDate: ticket.ticketSaleEndDate,
+      status: ticket.isActive ? 'active' : 'disabled',
+    })) || [],
+    promotions: [],
+  };
+}
+
 export async function getEvents(): Promise<Event[]> {
   const response = await apiClient<ApiNewEventResponse>('/event/report/get?companyId=3');
   return response.data.events.map(transformApiNewEventToEvent);
@@ -515,4 +596,20 @@ export async function updateTicket(ticketId: string, payload: UpdateTicketPayloa
         method: 'POST',
         body: JSON.stringify(payload)
     });
+}
+
+export async function getUserEvents(userId: string): Promise<Event[]> {
+  try {
+    const response = await apiClient<ApiUserEventsResponse>(`/event/map/get?userId=${userId}`);
+
+    if (!response || !response.events || !Array.isArray(response.events)) {
+      console.error('Invalid response format for user events:', response);
+      return [];
+    }
+
+    return response.events.map(transformApiUserEventToEvent);
+  } catch (error) {
+    console.error(`Error fetching events for user ${userId}:`, error);
+    return [];
+  }
 }
