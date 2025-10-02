@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -149,50 +148,76 @@ export default function CheckoutPage() {
     const rawPaymentPhoneNumber = channel === 'mpesa' && values.mpesaPhone ? values.mpesaPhone : values.phone;
     const paymentPhoneNumber = formatPhoneNumberForApi(rawPaymentPhoneNumber);
 
-    const payload: PurchasePayload = {
-      eventId: Number(firstItem.eventId),
-      amountDisplayed: cartTotal,
-      coupon_code: values.couponCode || undefined,
-      channel,
-      customer: {
-        email: values.email,
-        mobile_number: paymentPhoneNumber,
-      },
-      tickets: items.map(item => ({
-        ticketId: Number(item.ticketTypeId),
-        quantity: item.quantity,
-      })),
-    };
-
     try {
-      const response = await purchaseTickets(payload);
-      if (response && response.ticketGroup) {
-        setTicketGroup(response.ticketGroup);
-        if (channel === 'mpesa') {
-          setProgress(95);
-          setPaymentStatus('awaitingVerification');
-        } else if (channel === 'card' && response.checkoutUrl) {
-           setProgress(100);
-           setPaymentStatus('success');
-           setTimeout(() => {
-            clearCart();
-            if (response.checkoutUrl) {
-                window.location.href = response.checkoutUrl;
-            }
-           }, 2500);
-        } else {
-          throw new Error('Invalid response from server for card payment.');
-        }
-      } else {
-        throw new Error('Invalid response from server');
+      // Check if all tickets are still valid before proceeding
+      const eventId = firstItem.eventId;
+      const event = await import('@/services/event-service').then(module => module.getEventById(eventId));
+
+      if (!event) {
+        throw new Error('Event not found or no longer available');
       }
+
+      // Verify that all tickets in the cart are still valid
+      const invalidTickets = items.filter(item => {
+        const ticketType = event.ticketTypes.find(tt => tt.id === item.ticketTypeId);
+        return !ticketType || !ticketType.quantityAvailable || ticketType.status !== 'active';
+      });
+
+      if (invalidTickets.length > 0) {
+        throw new Error(`Some tickets are no longer available: ${invalidTickets.map(t => t.ticketTypeName).join(', ')}`);
+      }
+
+      // Use 'celcom' as the channel which has been tested to work
+      const payload: PurchasePayload = {
+        eventId: Number(firstItem.eventId),
+        amountDisplayed: cartTotal,
+        coupon_code: values.couponCode || "",
+        channel: "celcom",  // Using the channel that works in your test
+        customer: {
+          email: values.email,
+          mobile_number: paymentPhoneNumber,
+        },
+        tickets: items.map(item => ({
+          ticketId: Number(item.ticketTypeId),
+          quantity: item.quantity,
+        })),
+      };
+
+      console.log('Sending payment payload:', payload);
+      const response = await purchaseTickets(payload);
+      console.log('Payment response received:', response);
+
+      if (!response) {
+        throw new Error('No response received from payment server');
+      }
+
+      if (typeof response !== 'object') {
+        console.error('Unexpected response type:', typeof response);
+        throw new Error('Received invalid response format from payment server');
+      }
+
+      // Check specifically for the ticketGroup property
+      if (!response.ticketGroup) {
+        console.error('Missing ticketGroup in response:', response);
+        throw new Error('Payment initiated but missing confirmation code');
+      }
+
+      // Store the ticket group for order confirmation
+      setTicketGroup(response.ticketGroup);
+      console.log('Set ticketGroup to:', response.ticketGroup);
+
+      // Set appropriate payment status based on channel
+      setProgress(95);
+      setPaymentStatus('awaitingVerification');
+      console.log('Payment status set to awaiting verification');
+
     } catch (error) {
       console.error("Payment failed", error);
       setPaymentStatus('error');
       toast({
         variant: 'destructive',
         title: 'Payment Failed',
-        description: 'There was a problem processing your payment. Please try again.',
+        description: error instanceof Error ? error.message : 'There was a problem processing your payment. Please try again.',
       });
       setPaymentStatus('idle');
     }

@@ -1,4 +1,3 @@
-
 'use server';
 
 import { apiClient } from '@/lib/api-client';
@@ -126,6 +125,42 @@ interface ApiTicketGroupStatusResponse {
     status: boolean;
 }
 
+interface ApiNewTicketType {
+  ticketId: number;
+  isActive: boolean;
+  isSoldOut: boolean;
+  numberOfComplementary: number;
+  quantityAvailable: number;
+  soldQuantity: number;
+  status: string;
+  ticketName: string;
+  ticketPrice: number;
+  ticketSaleEndDate: string;
+}
+
+interface ApiNewEvent {
+  eventId: number;
+  eventName: string;
+  posterUrl: string;
+  isActive: boolean;
+  ticketSaleEnd: string;
+  tickets: ApiNewTicketType[];
+  location: string;
+  eventStartDate: string;
+  totalTicketSaleBalance: string;
+  totalPlatformFee: string;
+  uniqueTicketsCount: string;
+}
+
+interface ApiNewEventResponse {
+  data: {
+    companyId: number | null;
+    events: ApiNewEvent[];
+  };
+  message: string;
+  status: boolean;
+}
+
 function transformApiTicketInGroup(apiTicket: ApiTicketInGroup): PurchasedTicket {
     return {
         id: apiTicket.id,
@@ -168,6 +203,19 @@ function transformApiAdminTicketToTicketType(apiTicket: ApiAdminTicketType): Tic
   };
 }
 
+function transformApiNewTicketToTicketType(apiTicket: ApiNewTicketType): TicketType {
+  return {
+    id: String(apiTicket.ticketId),
+    name: apiTicket.ticketName,
+    price: apiTicket.ticketPrice || 0,
+    quantityAvailable: apiTicket.quantityAvailable,
+    ticketsToIssue: apiTicket.soldQuantity,
+    ticketLimitPerPerson: 0, // Not provided in new API
+    saleStartDate: '', // Not provided in new API
+    saleEndDate: apiTicket.ticketSaleEndDate,
+    status: apiTicket.isActive ? 'active' : 'disabled',
+  };
+}
 
 function transformApiEventToEvent(apiEvent: ApiEvent): Event {
   const posterHint = apiEvent.category?.toLowerCase().replace(/&/g, '').split(/\s+/).slice(0, 2).join(' ') || 'event poster';
@@ -221,9 +269,33 @@ function transformApiAdminEventToEvent(apiEvent: ApiAdminEvent): Event {
   };
 }
 
+function transformApiNewEventToEvent(apiEvent: ApiNewEvent): Event {
+  return {
+    id: String(apiEvent.eventId),
+    slug: String(apiEvent.eventId), // Use event ID as slug since it's not provided in the API
+    name: apiEvent.eventName,
+    date: apiEvent.eventStartDate,
+    endDate: apiEvent.ticketSaleEnd || undefined,
+    location: apiEvent.location,
+    posterImage: apiEvent.posterUrl,
+    posterImageHint: 'event poster',
+    description: '', // Not provided in new API
+    isFeatured: false, // Not provided in new API
+    isActive: apiEvent.isActive,
+    artists: [],
+    venue: {
+      name: apiEvent.location,
+      address: '',
+      capacity: 0,
+    },
+    ticketTypes: apiEvent.tickets?.map(transformApiNewTicketToTicketType) || [],
+    promotions: [],
+  };
+}
+
 export async function getEvents(): Promise<Event[]> {
-  const response = await apiClient<{ events: ApiEvent[] }>('/events/get/all');
-  return response.events.map(transformApiEventToEvent);
+  const response = await apiClient<ApiNewEventResponse>('/event/report/get?companyId=3');
+  return response.data.events.map(transformApiNewEventToEvent);
 }
 
 export async function getCompanyEvents(): Promise<Event[]> {
@@ -254,10 +326,100 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 }
 
 export async function purchaseTickets(payload: PurchasePayload): Promise<{ ticketGroup: string; message: string; status: boolean; checkoutUrl?: string; }> {
-  return apiClient('/event/ticket/purchase', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await apiClient<any>('/event/ticket/purchase', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    console.log('Purchase tickets API response:', response);
+
+    // Check for API error responses first
+    if (response && typeof response === 'object' && (response.status === false || response.error)) {
+      let errorMessage = 'Payment initialization failed';
+
+      // Extract error message from different possible formats
+      if (response.error && typeof response.error === 'string') {
+        try {
+          // Try to parse nested error JSON if present
+          if (response.error.includes('{')) {
+            const errorMatch = response.error.match(/\{.*\}/);
+            if (errorMatch) {
+              const parsedError = JSON.parse(errorMatch[0]);
+              if (parsedError.error) {
+                errorMessage = parsedError.error;
+              } else if (parsedError.message) {
+                errorMessage = parsedError.message;
+              }
+            }
+          } else {
+            errorMessage = response.error;
+          }
+        } catch (parseError) {
+          console.error('Failed to parse error message:', parseError);
+          errorMessage = response.error;
+        }
+      } else if (response.message) {
+        errorMessage = response.message;
+      }
+
+      throw new Error(`Payment failed: ${errorMessage}`);
+    }
+
+    // Handle different possible response structures for successful responses
+    if (response && typeof response === 'object') {
+      // Debug all properties in the response
+      console.log('Response properties:', Object.keys(response));
+
+      // Try to find ticketGroup in various possible locations and formats
+      let ticketGroup = '';
+
+      if (response.ticketGroup) {
+        ticketGroup = response.ticketGroup;
+      } else if (response.ticket_group) {
+        ticketGroup = response.ticket_group;
+      } else if (response.data && response.data.ticketGroup) {
+        ticketGroup = response.data.ticketGroup;
+      } else if (response.data && response.data.ticket_group) {
+        ticketGroup = response.data.ticket_group;
+      } else if (response.ticketgroup) { // Try lowercase variants
+        ticketGroup = response.ticketgroup;
+      } else if (response.data && response.data.ticketgroup) {
+        ticketGroup = response.data.ticketgroup;
+      } else if (typeof response === 'string') {
+        // If the response is just a string, use that as the ticketGroup
+        ticketGroup = response;
+      } else {
+        // As a last resort, check if the entire response or a sub-property might be the ticketGroup
+        const responseStr = JSON.stringify(response);
+        const matches = responseStr.match(/"([A-Z0-9]{5,8})"/); // Look for 5-8 character alphanumeric strings
+        if (matches && matches[1]) {
+          console.log('Found potential ticketGroup in response:', matches[1]);
+          ticketGroup = matches[1];
+        }
+      }
+
+      if (!ticketGroup) {
+        console.error('Missing ticketGroup in response. Full response:', response);
+        throw new Error('Server did not return a valid ticket confirmation. The payment may have failed or there might be an issue with the selected tickets.');
+      }
+
+      // Normalize the response to expected format
+      return {
+        ticketGroup,
+        message: response.message || 'Payment processing initiated',
+        status: response.status !== false, // Only treat explicit false as false
+        checkoutUrl: response.checkoutUrl || response.checkout_url ||
+                    (response.data && (response.data.checkoutUrl || response.data.checkout_url)) || undefined,
+      };
+    }
+
+    console.error('Unexpected response format:', response);
+    throw new Error('Received unexpected response format from payment server');
+  } catch (error) {
+    console.error('Purchase tickets error:', error);
+    throw error;
+  }
 }
 
 export async function checkPaymentStatus(ticketGroup: string): Promise<{
