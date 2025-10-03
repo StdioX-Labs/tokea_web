@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -38,6 +38,7 @@ const eventFormSchema = z.object({
   eventName: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
   eventDescription: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   eventPosterUrl: z.string().min(1, { message: 'Please upload a poster image.' }),
+  categoryId: z.string().optional(),
   eventLocation: z.string().min(3, { message: 'Location is required.' }),
   eventStartDate: z.date({ required_error: 'Event start date is required.' }),
   eventEndDate: z.date().optional(),
@@ -48,7 +49,6 @@ const eventFormSchema = z.object({
   endTimeMinute: z.string().default('00'),
   endTimePeriod: z.enum(['AM', 'PM']).default('PM'),
 });
-
 
 const categories: EventCategory[] = [
   { id: '1', name: 'Music' },
@@ -69,13 +69,50 @@ interface AddEventModalProps {
 export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = 'add' }: AddEventModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Handle image upload to Cloudinary
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'ml_default');
+
+      const response = await fetch('https://api.cloudinary.com/v1_1/deubdntzs/image/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      form.setValue('eventPosterUrl', data.secure_url);
+      toast({ title: 'Success', description: 'Image uploaded successfully' });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Upload failed',
+        description: 'There was an error uploading your image. Please try again.'
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const form = useForm<z.infer<typeof eventFormSchema>>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
       eventName: '',
       eventDescription: '',
       eventPosterUrl: '',
+      categoryId: '1',
       eventLocation: '',
       startTimeHour: '12',
       startTimeMinute: '00',
@@ -158,7 +195,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
         eventName: '',
         eventDescription: '',
         eventPosterUrl: '',
-        categoryId: undefined,
+        categoryId: '1',
         eventLocation: '',
         eventStartDate: undefined,
         eventEndDate: undefined,
@@ -175,7 +212,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
   async function onSubmit(values: z.infer<typeof eventFormSchema>) {
     if (isViewMode) return;
     setIsSubmitting(true);
-    
+
     try {
       // Convert form time values to hours and minutes
       let startHour = parseInt(values.startTimeHour);
@@ -211,6 +248,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
           eventName: values.eventName,
           eventDescription: values.eventDescription,
           eventPosterUrl: values.eventPosterUrl,
+          categoryId: values.categoryId,
           eventLocation: values.eventLocation,
           eventStartDate: startDate.toISOString(), // This will include both the date and time
           eventEndDate: endDate?.toISOString(), // This will include both the date and time
@@ -225,6 +263,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
           eventName: values.eventName,
           eventDescription: values.eventDescription,
           eventPosterUrl: values.eventPosterUrl,
+          categoryId: values.categoryId,
           eventLocation: values.eventLocation,
           eventStartDate: startDate.toISOString(),
           eventEndDate: endDate?.toISOString(),
@@ -299,19 +338,35 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
                         <FormLabel>Event Poster</FormLabel>
                         <FormControl>
                           <div className="flex items-center gap-2">
-                            <Input placeholder="Click 'Upload' to set image URL" value={field.value} readOnly disabled />
-                            <Button 
-                              type="button" 
+                            <Input placeholder="Click 'Upload' to select an image" value={field.value} readOnly disabled />
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              style={{ display: 'none' }}
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleImageUpload(file);
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
                               variant="outline"
-                              onClick={() => field.onChange(`https://placehold.co/800x1200.png?t=${Date.now()}`)}
-                              disabled={isSubmitting}
-                              >
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={isSubmitting || isUploading}
+                            >
+                              {isUploading ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
                                 <Upload className="mr-2 h-4 w-4" />
+                              )}
                               Upload
                             </Button>
                           </div>
                         </FormControl>
-                        <FormDescription>Simulates uploading a file and generating a URL.</FormDescription>
+                        <FormDescription>Upload an image for your event poster.</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -331,7 +386,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
             </div>
 
             <Separator />
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <FormField
                 control={form.control}
@@ -369,7 +424,7 @@ export function AddEventModal({ isOpen, onOpenChange, onSuccess, event, mode = '
                 )}
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                     control={form.control}
