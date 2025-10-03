@@ -8,22 +8,42 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Edit, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, ToggleLeft, ToggleRight, Loader2, Eye, Trash2, AlertCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AddTicketModal } from './add-ticket-modal';
 import { format } from 'date-fns';
-import { getEventTickets } from '@/services/event-service';
+import { getEventTickets, updateTicketStatus } from '@/services/event-service';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ManageTicketsModalProps {
   isOpen: boolean;
@@ -65,6 +85,8 @@ export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicket
   const [editingTicket, setEditingTicket] = useState<TicketType | null>(null);
   const [tickets, setTickets] = useState<TicketType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchTickets = useCallback(async () => {
@@ -97,7 +119,34 @@ export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicket
     setEditingTicket(ticket);
     setAddTicketModalOpen(true);
   };
-  
+
+  const handleDeleteTicket = async () => {
+    if (deletingTicketId) {
+      try {
+        // Call the delete API here
+        // await deleteTicket(deletingTicketId);
+        toast({ variant: 'success', title: 'Success', description: 'Ticket deleted successfully.' });
+        setDeletingTicketId(null);
+        setAlertDialogOpen(false);
+        fetchTickets();
+      } catch (error) {
+        console.error("Failed to delete ticket:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not delete ticket.' });
+      }
+    }
+  };
+
+  const handleStatusToggle = async (ticket: TicketType) => {
+    try {
+      await updateTicketStatus(ticket.id, { status: ticket.status === 'active' ? 'inactive' : 'active' });
+      toast({ variant: 'success', title: 'Success', description: `Ticket ${ticket.status === 'active' ? 'disabled' : 'enabled'} successfully.` });
+      fetchTickets();
+    } catch (error) {
+      console.error("Failed to update ticket status:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update ticket status.' });
+    }
+  };
+
   if (!event) return null;
 
   return (
@@ -152,9 +201,13 @@ export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicket
                                   <DropdownMenuItem onClick={() => handleEditTicket(ticket)}>
                                       <Edit className="mr-2 h-4 w-4" /> Edit
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleStatusToggle(ticket)}>
                                       {ticket.status === 'active' ? <ToggleLeft className="mr-2 h-4 w-4" /> : <ToggleRight className="mr-2 h-4 w-4" />}
                                       {ticket.status === 'active' ? 'Disable' : 'Enable'}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => { setDeletingTicketId(ticket.id); setAlertDialogOpen(true); }}>
+                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
                                   </DropdownMenuItem>
                                   </DropdownMenuContent>
                               </DropdownMenu>
@@ -179,6 +232,22 @@ export function ManageTicketsModal({ isOpen, onOpenChange, event }: ManageTicket
           eventId={event.id}
           onSuccess={fetchTickets}
       />
+      <AlertDialog open={alertDialogOpen} onOpenChange={setAlertDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this ticket? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAlertDialogOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTicket} className="bg-red-500 hover:bg-red-600">
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Ticket
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

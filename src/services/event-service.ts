@@ -598,6 +598,24 @@ export async function updateTicket(ticketId: string, payload: UpdateTicketPayloa
     });
 }
 
+export interface UpdateTicketStatusPayload {
+  status: 'active' | 'inactive';
+}
+
+// Add this function to update the ticket status specifically
+export async function updateTicketStatus(ticketId: string, payload: UpdateTicketStatusPayload): Promise<void> {
+  try {
+    const updatedStatus = payload.status === 'active' ? true : false;
+    // Call the existing updateTicket function with just the status change
+    await apiClient.put(`/tickets/${ticketId}`, {
+      isActive: updatedStatus
+    });
+  } catch (error) {
+    console.error('Error updating ticket status:', error);
+    throw error;
+  }
+}
+
 export async function getUserEvents(userId: string): Promise<Event[]> {
   try {
     const response = await apiClient<ApiUserEventsResponse>(`/event/map/get?userId=${userId}`);
