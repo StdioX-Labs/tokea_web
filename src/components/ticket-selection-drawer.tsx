@@ -15,6 +15,7 @@ import { Button } from './ui/button';
 import { Minus, Plus } from 'lucide-react';
 import { useCart } from '@/context/cart-provider';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface TicketSelectionDrawerProps {
   event: Event;
@@ -33,6 +34,7 @@ export default function TicketSelectionDrawer({
 
   const { addItem } = useCart();
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleQuantityChange = (ticketTypeId: string, change: number) => {
     setTicketQuantities((prev) => ({
@@ -55,6 +57,18 @@ export default function TicketSelectionDrawer({
       toast({
         title: "Tickets added to cart!",
         description: `Your tickets for ${event.name} are waiting for you.`,
+        action: (
+          <div className="mt-2">
+            <Button
+              onClick={() => router.push('/checkout')}
+              variant="outline"
+              className="bg-accent hover:bg-accent/90 text-accent-foreground border-0"
+              size="sm"
+            >
+              Checkout now
+            </Button>
+          </div>
+        ),
       });
       onOpenChange(false);
     } else {

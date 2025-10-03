@@ -351,10 +351,9 @@ export default function CheckoutPage() {
                                 </FormItem>
                               )}
                             />
-                            <Tabs defaultValue="mpesa" className="w-full" onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
-                                <TabsList className="grid w-full grid-cols-2">
+                            <Tabs defaultValue="mpesa" className="w-full">
+                                <TabsList className="grid w-full grid-cols-1">
                                     <TabsTrigger value="mpesa">Mobile Money</TabsTrigger>
-                                    <TabsTrigger value="card">Card</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="mpesa" className="pt-4 space-y-4">
                                     <p className="text-sm text-muted-foreground">You will receive a push notification to your M-Pesa number to complete the payment.</p>
@@ -374,12 +373,6 @@ export default function CheckoutPage() {
                                     />
                                     <Button onClick={() => handleSubmit('mpesa')} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
                                         Pay KES {cartTotal.toFixed(2)} with M-Pesa
-                                    </Button>
-                                </TabsContent>
-                                <TabsContent value="card" className="pt-4">
-                                    <p className="text-sm text-muted-foreground mb-4">You will be redirected to our secure payment partner to complete your purchase.</p>
-                                    <Button onClick={() => handleSubmit('card')} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                                        Proceed to Card Payment
                                     </Button>
                                 </TabsContent>
                             </Tabs>
