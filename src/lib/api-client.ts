@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://api.soldoutafrica.store/api/v1';
+const API_BASE_URL = 'https://api.soldoutafrica.com/api/v1';
 
 // Basic Auth credentials
 const username = '254717286026';

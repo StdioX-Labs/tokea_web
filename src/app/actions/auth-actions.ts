@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers';
 
 // API configuration
-const API_BASE_URL = 'https://api.soldoutafrica.store/api/v1';
+const API_BASE_URL = 'https://api.soldoutafrica.com/api/v1';
 const username = '254717286026';
 const password = 's0ascAnn3r@56YearsLater!';
 const encodedCredentials = Buffer.from(`${username}:${password}`).toString('base64');

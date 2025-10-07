@@ -17,6 +17,17 @@ import { useCart } from '@/context/cart-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
+// Utility function to check if a ticket is valid
+const isTicketValid = (ticketType: TicketType): boolean => {
+  // Check if ticket has a valid sale end date
+  if (!ticketType.saleEndDate) return true;
+
+  const now = new Date();
+  const endDate = new Date(ticketType.saleEndDate);
+
+  return now <= endDate;
+};
+
 interface TicketSelectionDrawerProps {
   event: Event;
   isOpen: boolean;
@@ -28,8 +39,11 @@ export default function TicketSelectionDrawer({
   isOpen,
   onOpenChange,
 }: TicketSelectionDrawerProps) {
+  // Filter to only valid tickets
+  const validTickets = event.ticketTypes.filter(isTicketValid);
+
   const [ticketQuantities, setTicketQuantities] = useState<Record<string, number>>(
-    event.ticketTypes.reduce((acc, type) => ({ ...acc, [type.id]: 0 }), {})
+    validTickets.reduce((acc, type) => ({ ...acc, [type.id]: 0 }), {})
   );
 
   const { addItem } = useCart();
@@ -80,7 +94,7 @@ export default function TicketSelectionDrawer({
     }
   };
 
-  const total = event.ticketTypes.reduce((acc, type) => {
+  const total = validTickets.reduce((acc, type) => {
     return acc + type.price * (ticketQuantities[type.id] || 0);
   }, 0);
 
@@ -92,36 +106,42 @@ export default function TicketSelectionDrawer({
           <SheetDescription>Select your tickets</SheetDescription>
         </SheetHeader>
         <div className="my-4 space-y-4">
-          {event.ticketTypes.map((ticketType) => (
-            <div key={ticketType.id} className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold">{ticketType.name}</p>
-                <p className="text-muted-foreground">KES {ticketType.price.toFixed(2)}</p>
+          {validTickets.length > 0 ? (
+            validTickets.map((ticketType) => (
+              <div key={ticketType.id} className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold">{ticketType.name}</p>
+                  <p className="text-muted-foreground">KES {ticketType.price.toFixed(2)}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleQuantityChange(ticketType.id, -1)}
+                    disabled={ticketQuantities[ticketType.id] === 0}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <span className="w-8 text-center text-lg font-bold">
+                    {ticketQuantities[ticketType.id]}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleQuantityChange(ticketType.id, 1)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleQuantityChange(ticketType.id, -1)}
-                  disabled={ticketQuantities[ticketType.id] === 0}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <span className="w-8 text-center text-lg font-bold">
-                  {ticketQuantities[ticketType.id]}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleQuantityChange(ticketType.id, 1)}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+            ))
+          ) : (
+            <div className="py-4 text-center text-muted-foreground">
+              No tickets are currently available for this event.
             </div>
-          ))}
+          )}
         </div>
         <SheetFooter>
           <div className="flex w-full items-center justify-between gap-4">
@@ -132,6 +152,7 @@ export default function TicketSelectionDrawer({
               size="lg"
               className="flex-grow bg-accent hover:bg-accent/90 text-accent-foreground"
               onClick={handleAddToCart}
+              disabled={validTickets.length === 0}
             >
               Add to Cart
             </Button>

@@ -88,7 +88,7 @@ export default function LoginPage() {
 
   // Helper to login user after OTP validation
   async function loginUser(mobileNumber: string) {
-    const API_BASE_URL = 'https://api.soldoutafrica.store/api/v1';
+    const API_BASE_URL = 'https://api.soldoutafrica.com/api/v1';
     const password = 's0ascAnn3r@56YearsLater!';
     try {
       const response = await fetch(`${API_BASE_URL}/user/login`, {

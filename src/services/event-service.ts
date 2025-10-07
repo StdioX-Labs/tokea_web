@@ -375,7 +375,7 @@ function transformApiUserEventToEvent(apiEvent: ApiUserEvent): Event {
 }
 
 export async function getEvents(): Promise<Event[]> {
-  const response = await apiClient<ApiNewEventResponse>('/event/report/get?companyId=3');
+  const response = await apiClient<ApiNewEventResponse>('/event/report/get?companyId=54');
   return response.data.events.map(transformApiNewEventToEvent);
 }
 
