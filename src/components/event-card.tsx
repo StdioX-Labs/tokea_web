@@ -1,9 +1,8 @@
 import type { Event } from '@/lib/types';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Calendar, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 
 interface EventCardProps {
   event: Event;
@@ -11,25 +10,6 @@ interface EventCardProps {
 
 export default function EventCard({ event }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
-
-  // Process the image URL to handle encoding issues
-  const imageUrl = useMemo(() => {
-    try {
-      // First decode the URL in case it's already encoded from the API
-      const decodedUrl = decodeURIComponent(event.posterImage);
-
-      // Handle relative URLs if needed
-      if (decodedUrl.startsWith('/')) {
-        return `https://api.soldoutafrica.com${decodedUrl}`;
-      }
-
-      // Return the properly decoded URL
-      return decodedUrl;
-    } catch (error) {
-      console.error(`Error processing image URL for ${event.name}:`, error);
-      return event.posterImage; // Fallback to original if decoding fails
-    }
-  }, [event.posterImage, event.name]);
 
   return (
     <Link href={`/events/${event.slug}`} className="group block">
@@ -39,15 +19,13 @@ export default function EventCard({ event }: EventCardProps) {
             <span className="text-gray-500">Image unavailable</span>
           </div>
         ) : (
-          <Image
-            src={imageUrl}
+          <img
+            src={event.posterImage}
             alt={`Poster for ${event.name}`}
-            width={400}
-            height={600}
             className="aspect-[2/3] w-full object-cover"
-            data-ai-hint={event.posterImageHint}
+            loading="lazy"
             onError={() => {
-              console.error(`Failed to load image: ${imageUrl}`);
+              console.error(`Failed to load image: ${event.posterImage}`);
               setImageError(true);
             }}
           />

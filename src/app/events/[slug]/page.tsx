@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import { notFound } from 'next/navigation';
-import Image from 'next/image';
 import { format } from 'date-fns';
 import {
   Accordion,
@@ -18,18 +17,15 @@ import type { Event } from '@/lib/types';
 import { getEventBySlug } from '@/services/event-service';
 
 export default function EventDetailsPage({ params }: { params: { slug: string } }) {
-  // Unwrap the params object using React.use()
-  const resolvedParams = use(params);
-  const slug = resolvedParams.slug;
-
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     async function fetchEvent() {
       try {
-        const fetchedEvent = await getEventBySlug(slug);
+        const fetchedEvent = await getEventBySlug(params.slug);
         if (!fetchedEvent) {
           notFound();
         }
@@ -42,7 +38,7 @@ export default function EventDetailsPage({ params }: { params: { slug: string } 
       }
     }
     fetchEvent();
-  }, [slug]);
+  }, [params.slug]);
 
 
   if (isLoading) {
@@ -64,15 +60,21 @@ export default function EventDetailsPage({ params }: { params: { slug: string } 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start">
             {/* Image Column */}
             <div className="w-full lg:sticky top-24">
-              <Image
-                src={event.posterImage}
-                alt={`Poster for ${event.name}`}
-                width={800}
-                height={1200}
-                className="w-full h-auto object-cover rounded-xl shadow-lg aspect-[2/3] transition-transform duration-300 hover:scale-105"
-                data-ai-hint={event.posterImageHint}
-                priority
-              />
+              {imageError ? (
+                <div className="aspect-[2/3] w-full bg-gray-200 flex items-center justify-center rounded-xl">
+                  <span className="text-gray-500">Image unavailable</span>
+                </div>
+              ) : (
+                <img
+                  src={event.posterImage}
+                  alt={`Poster for ${event.name}`}
+                  className="w-full h-auto object-cover rounded-xl shadow-lg aspect-[2/3] transition-transform duration-300 hover:scale-105"
+                  onError={() => {
+                    console.error(`Failed to load image: ${event.posterImage}`);
+                    setImageError(true);
+                  }}
+                />
+              )}
             </div>
 
             {/* Details Column */}
