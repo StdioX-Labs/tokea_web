@@ -33,7 +33,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Align container port with Kubernetes manifest (containerPort: 80)
 ENV PORT=80
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat libcap-utils \
+  && setcap 'cap_net_bind_service=+ep' /usr/local/bin/node
 
 # Create non-root user for security
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
