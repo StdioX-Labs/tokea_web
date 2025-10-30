@@ -7,8 +7,6 @@ Dockerfile
 # THIS IS THE MOST IMPORTANT LINE FOR THIS METHOD
 node_modules
 
-# Next.js build output (we will copy this manually in the Dockerfile)
-# .next  <-- It's okay to comment this out or remove it, as you NEED to copy it.
 
 # Local environment variables
 .env
