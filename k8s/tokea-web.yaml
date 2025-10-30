@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tokeaweb
+  namespace: production
+  labels:
+    app: tokeaweb
+    tier: frontend
+    version: v1.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tokeaweb
+  template:
+    metadata:
+      labels:
+        app: tokeaweb
+        tier: frontend
+        version: v1.0
+    spec:
+      imagePullSecrets:
+        - name: cc-secret
+      #      automountServiceAccountToken: false
+      #      imagePullSecrets:
+      #        - name: gitlab-registry-secret
+      containers:
+        - name: tokeaweb
+          image:  sjc.vultrcr.com/stdioxcce/tokea-web
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: "200m"     # 1 CPU core
+              memory: "512Mi" # 1 GB memory
+            requests:
+              cpu: "200m"      # 0.5 CPU core
+              memory: "512Mi"  # 512 MB memory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tokeaweb
+  namespace: production
+  labels:
+    app: tokeaweb
+spec:
+  type: ClusterIP
+  selector:
+    app: tokeaweb
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+
