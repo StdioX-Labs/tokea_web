@@ -31,7 +31,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 # Align container port with Kubernetes manifest (containerPort: 80)
-ENV PORT=80
+ENV PORT=3000
 
 RUN apk add --no-cache libc6-compat libcap-utils \
   && setcap 'cap_net_bind_service=+ep' /usr/local/bin/node
@@ -45,7 +45,7 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/package.json ./package.json
 COPY --from=deps /app/node_modules ./node_modules
 
-EXPOSE 80
+EXPOSE 3000
 USER nextjs
 
 # Use next start; PORT is set to 80 for k8s service compatibility
