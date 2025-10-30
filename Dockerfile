@@ -1,43 +1,42 @@
-# ====================================================================================
-# FINAL STAGE: Production Runner
-# This Dockerfile packages a pre-built Next.js application.
-# It does NOT build the application.
-# ====================================================================================
+############################################################
+# Multi-stage Dockerfile: build inside Docker and serve on 80
+############################################################
 
-# Use the official Node.js 20 Alpine image. It's lightweight and secure.
-FROM --platform=linux/amd64  node:20-alpine
-
-# Set the working directory inside the container
+# Stage 1: install base build tools and dependencies cache
+FROM --platform=linux/amd64 node:20-alpine AS deps
 WORKDIR /app
-
-# Set the environment to production for optimized performance
-ENV NODE_ENV=production
-
-# The 'node' user is pre-installed in the official Node.js Alpine image.
-# We will use it for better security instead of running as root.
-# https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#non-root-user
-
-# Copy package.json and the lock file to install only production dependencies
+RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
+RUN npm ci
 
-# Install ONLY the production dependencies needed to run the app.
-# The --omit=dev flag is the modern equivalent of --production.
-RUN npm install --omit=dev
+# Stage 2: build the Next.js app
+FROM --platform=linux/amd64 node:20-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+ENV NODE_ENV=development
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
 
-# Copy the pre-built Next.js application output from your local machine.
-# The --chown flag sets the owner to the non-root 'node' user.
-COPY --chown=node:node ./.next ./.next
+# Stage 3: production runner
+FROM --platform=linux/amd64 node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=80
 
-# This line is removed because the project does not have a 'public' directory.
-# If you add a 'public' folder later, you can uncomment this line.
- COPY --chown=node:node ./public ./public/
-
-# Switch to the non-root user for running the application
+# Create non-root user (Node image includes 'node', but we harden with explicit user)
 USER node
 
-# Expose the port the app will run on. Next.js defaults to 3000.
-EXPOSE 3000
+# Copy only the necessary runtime assets
+COPY --chown=node:node package.json package-lock.json* ./
+COPY --chown=node:node --from=builder /app/.next ./.next
+COPY --chown=node:node --from=builder /app/public ./public 2>/dev/null || true
 
-# The command to run the application, using the 'start' script from package.json
-# Your start script "next start --hostname 0.0.0.0" is perfect for Docker.
-CMD ["npm", "start"]
+# Install only production dependencies
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Listen on port 80 to align with Kubernetes Service/Deployment
+EXPOSE 80
+
+# Start Next.js bound to 0.0.0.0 on port 80
+CMD ["npm", "start", "--", "-p", "80", "-H", "0.0.0.0"]
