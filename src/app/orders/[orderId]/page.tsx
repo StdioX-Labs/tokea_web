@@ -58,85 +58,52 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      canvas.width = 1200;
-      canvas.height = 500;
+      canvas.width = 800;
+      canvas.height = 800;
 
-      // Gradient background
+      // Elegant gradient background
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, '#ffffff');
-      gradient.addColorStop(1, '#f8fafc');
+      gradient.addColorStop(0, '#1e293b');
+      gradient.addColorStop(0.5, '#334155');
+      gradient.addColorStop(1, '#1e293b');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Main border
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(15, 15, canvas.width - 30, canvas.height - 30);
+      // Add subtle pattern overlay
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+      for (let i = 0; i < canvas.width; i += 20) {
+        for (let j = 0; j < canvas.height; j += 20) {
+          ctx.fillRect(i, j, 1, 1);
+        }
+      }
 
-      // Inner border
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(25, 25, canvas.width - 50, canvas.height - 50);
+      // Golden accent bar at top
+      const goldGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      goldGradient.addColorStop(0, '#d4af37');
+      goldGradient.addColorStop(0.5, '#f4e5a1');
+      goldGradient.addColorStop(1, '#d4af37');
+      ctx.fillStyle = goldGradient;
+      ctx.fillRect(0, 0, canvas.width, 8);
+      ctx.fillRect(0, canvas.height - 8, canvas.width, 8);
 
-      // Left section background
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillRect(25, 25, 380, canvas.height - 50);
+      // Main content area with glass morphism effect
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.fillRect(30, 30, canvas.width - 60, canvas.height - 60);
 
-      // Vertical tear line
-      ctx.setLineDash([8, 8]);
-      ctx.strokeStyle = '#cbd5e1';
+      // Border with gradient
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.3)';
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(405, 25);
-      ctx.lineTo(405, canvas.height - 25);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
 
-      // Event name (rotated on left side)
-      ctx.fillStyle = '#0f172a';
+      // Event name at top - centered
+      ctx.fillStyle = '#f8fafc';
       ctx.font = 'bold 32px Arial';
-      ctx.save();
-      ctx.translate(70, 250);
-      ctx.rotate(-Math.PI / 2);
       ctx.textAlign = 'center';
-      ctx.fillText(eventName.toUpperCase(), 0, 0);
-      ctx.restore();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = 10;
 
-      // Ticket type badge
-      ctx.fillStyle = '#3b82f6';
-      ctx.fillRect(140, 50, 200, 40);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(ticket.ticketName.toUpperCase(), 240, 77);
-
-      // Load and draw QR code
-      const qrImage = new window.Image();
-      qrImage.crossOrigin = 'anonymous';
-
-      await new Promise((resolve, reject) => {
-        qrImage.onload = resolve;
-        qrImage.onerror = reject;
-        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(ticket.barcode)}`;
-      });
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(160, 130, 180, 180);
-      ctx.drawImage(qrImage, 170, 140, 160, 160);
-
-      // Barcode text
-      ctx.fillStyle = '#64748b';
-      ctx.font = '12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(ticket.barcode, 260, 340);
-
-      // Right section - Event details
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 36px Arial';
-
-      const maxWidth = 700;
-      let eventNameLines = [];
+      const maxWidth = 680;
+      let eventNameLines: string[] = [];
       let words = eventName.split(' ');
       let currentLine = '';
 
@@ -152,57 +119,159 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       }
       eventNameLines.push(currentLine.trim());
 
-      let yPos = 80;
+      let yPos = 70;
       eventNameLines.forEach((line, index) => {
-        ctx.fillText(line, 450, yPos + (index * 45));
+        ctx.fillText(line, canvas.width / 2, yPos + (index * 40));
       });
+      ctx.shadowBlur = 0;
 
-      yPos += eventNameLines.length * 45 + 20;
+      yPos += eventNameLines.length * 40 + 20;
 
-      // Decorative line
-      ctx.strokeStyle = '#3b82f6';
+      // Golden decorative line
+      const lineGradient = ctx.createLinearGradient(canvas.width / 2 - 200, yPos, canvas.width / 2 + 200, yPos);
+      lineGradient.addColorStop(0, 'rgba(212, 175, 55, 0)');
+      lineGradient.addColorStop(0.5, 'rgba(212, 175, 55, 1)');
+      lineGradient.addColorStop(1, 'rgba(212, 175, 55, 0)');
+      ctx.strokeStyle = lineGradient;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(450, yPos);
-      ctx.lineTo(650, yPos);
+      ctx.moveTo(canvas.width / 2 - 200, yPos);
+      ctx.lineTo(canvas.width / 2 + 200, yPos);
       ctx.stroke();
 
       yPos += 40;
 
-      // Ticket details
-      ctx.fillStyle = '#475569';
+      // Ticket type badge - centered
+      const badgeY = yPos;
+      const badgeX = canvas.width / 2;
+      const badgeWidth = 200;
+      const badgeHeight = 50;
+
+      const badgeGradient = ctx.createLinearGradient(badgeX - badgeWidth/2, badgeY, badgeX + badgeWidth/2, badgeY);
+      badgeGradient.addColorStop(0, '#d4af37');
+      badgeGradient.addColorStop(0.5, '#f4e5a1');
+      badgeGradient.addColorStop(1, '#d4af37');
+      ctx.fillStyle = badgeGradient;
+
+      ctx.beginPath();
+      ctx.roundRect(badgeX - badgeWidth/2, badgeY - badgeHeight/2, badgeWidth, badgeHeight, 10);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e293b';
       ctx.font = 'bold 18px Arial';
-      ctx.fillText('TICKET DETAILS', 450, yPos);
-
-      yPos += 30;
-      ctx.fillStyle = '#64748b';
-      ctx.font = '16px Arial';
-      ctx.fillText(`Type: ${ticket.ticketName}`, 450, yPos);
-
-      yPos += 30;
-      ctx.fillText(`Price: KES ${ticket.ticketPrice.toFixed(2)}`, 450, yPos);
-
-      yPos += 30;
-      ctx.fillText(`Status: ${ticket.status}`, 450, yPos);
-
-      yPos += 30;
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '12px Arial';
-      ctx.fillText(`Ticket ID: ${ticket.id}`, 450, yPos);
-
-      // Bottom section
-      const bottomY = canvas.height - 60;
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillRect(25, bottomY - 20, canvas.width - 50, 60);
-
-      ctx.fillStyle = '#475569';
-      ctx.font = 'bold 14px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('PRESENT THIS TICKET AT THE ENTRANCE', canvas.width / 2, bottomY + 10);
+      ctx.fillText(ticket.ticketName.toUpperCase(), badgeX, badgeY + 6);
 
-      ctx.fillStyle = '#94a3b8';
+      yPos += 60;
+
+      // QR Code section - centered and prominent
+      const qrSize = 280;
+      const qrX = canvas.width / 2 - qrSize / 2;
+      const qrY = yPos;
+
+      // QR background with shadow
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetY = 5;
+      ctx.beginPath();
+      ctx.roundRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40, 15);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Load and draw QR code
+      const qrImage = new window.Image();
+      qrImage.crossOrigin = 'anonymous';
+
+      await new Promise((resolve, reject) => {
+        qrImage.onload = resolve;
+        qrImage.onerror = reject;
+        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(ticket.barcode)}`;
+      });
+
+      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+      yPos += qrSize + 30;
+
+      // Barcode text below QR - centered
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.6)';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(ticket.barcode, canvas.width / 2, yPos);
+
+      yPos += 30;
+
+      // Ticket details section - centered
+      const detailsX = canvas.width / 2;
+
+      ctx.fillStyle = '#d4af37';
+      ctx.font = 'bold 20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('TICKET DETAILS', detailsX, yPos);
+
+      yPos += 35;
+
+      // Detail items - centered
+      const details = [
+        { label: 'Price', value: `KES ${ticket.ticketPrice.toFixed(2)}` },
+        { label: 'Status', value: ticket.status },
+      ];
+
+      ctx.font = '16px Arial';
+      details.forEach((detail, index) => {
+        ctx.fillStyle = 'rgba(248, 250, 252, 0.6)';
+        ctx.fillText(`${detail.label}: `, detailsX - 80, yPos + (index * 28));
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(detail.value, detailsX + 20, yPos + (index * 28));
+        ctx.font = '16px Arial';
+      });
+
+      yPos += details.length * 28 + 20;
+
+      // Ticket ID in a premium box - centered
+      const idBoxWidth = 500;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.beginPath();
+      ctx.roundRect(canvas.width / 2 - idBoxWidth / 2, yPos - 10, idBoxWidth, 50, 8);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.6)';
+      ctx.font = '11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('TICKET ID', canvas.width / 2, yPos + 8);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '12px monospace';
+      ctx.fillText(ticket.id, canvas.width / 2, yPos + 28);
+
+      yPos += 70;
+
+      // Footer text - centered
+      ctx.fillStyle = '#d4af37';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('PRESENT THIS TICKET AT THE ENTRANCE', canvas.width / 2, yPos);
+
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.5)';
       ctx.font = '12px Arial';
-      ctx.fillText('This ticket is non-transferable and valid for one-time entry only', canvas.width / 2, bottomY + 30);
+      ctx.fillText('Valid for one-time entry only', canvas.width / 2, yPos + 22);
+
+      // Watermark
+      ctx.fillStyle = 'rgba(212, 175, 55, 0.08)';
+      ctx.font = 'bold 100px Arial';
+      ctx.textAlign = 'center';
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 6);
+      ctx.fillText('TOKEA', 0, 0);
+      ctx.restore();
 
       // Convert to blob and download
       canvas.toBlob((blob) => {
@@ -218,7 +287,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
 
         toast({
           title: 'Ticket Downloaded',
-          description: 'Your ticket has been downloaded successfully.',
+          description: 'Your premium ticket has been downloaded successfully.',
         });
       });
     } catch (error) {
@@ -246,85 +315,52 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      canvas.width = 1200;
-      canvas.height = 500;
+      canvas.width = 800;
+      canvas.height = 800;
 
-      // Gradient background
+      // Elegant gradient background
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, '#ffffff');
-      gradient.addColorStop(1, '#f8fafc');
+      gradient.addColorStop(0, '#1e293b');
+      gradient.addColorStop(0.5, '#334155');
+      gradient.addColorStop(1, '#1e293b');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Main border
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(15, 15, canvas.width - 30, canvas.height - 30);
+      // Add subtle pattern overlay
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+      for (let i = 0; i < canvas.width; i += 20) {
+        for (let j = 0; j < canvas.height; j += 20) {
+          ctx.fillRect(i, j, 1, 1);
+        }
+      }
 
-      // Inner border
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(25, 25, canvas.width - 50, canvas.height - 50);
+      // Golden accent bar at top
+      const goldGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      goldGradient.addColorStop(0, '#d4af37');
+      goldGradient.addColorStop(0.5, '#f4e5a1');
+      goldGradient.addColorStop(1, '#d4af37');
+      ctx.fillStyle = goldGradient;
+      ctx.fillRect(0, 0, canvas.width, 8);
+      ctx.fillRect(0, canvas.height - 8, canvas.width, 8);
 
-      // Left section background
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillRect(25, 25, 380, canvas.height - 50);
+      // Main content area with glass morphism effect
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.fillRect(30, 30, canvas.width - 60, canvas.height - 60);
 
-      // Vertical tear line
-      ctx.setLineDash([8, 8]);
-      ctx.strokeStyle = '#cbd5e1';
+      // Border with gradient
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.3)';
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(405, 25);
-      ctx.lineTo(405, canvas.height - 25);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
 
-      // Event name (rotated on left side)
-      ctx.fillStyle = '#0f172a';
+      // Event name at top - centered
+      ctx.fillStyle = '#f8fafc';
       ctx.font = 'bold 32px Arial';
-      ctx.save();
-      ctx.translate(70, 250);
-      ctx.rotate(-Math.PI / 2);
       ctx.textAlign = 'center';
-      ctx.fillText(eventName.toUpperCase(), 0, 0);
-      ctx.restore();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = 10;
 
-      // Ticket type badge
-      ctx.fillStyle = '#3b82f6';
-      ctx.fillRect(140, 50, 200, 40);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(ticket.ticketName.toUpperCase(), 240, 77);
-
-      // Load and draw QR code
-      const qrImage = new window.Image();
-      qrImage.crossOrigin = 'anonymous';
-
-      await new Promise((resolve, reject) => {
-        qrImage.onload = resolve;
-        qrImage.onerror = reject;
-        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(ticket.barcode)}`;
-      });
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(160, 130, 180, 180);
-      ctx.drawImage(qrImage, 170, 140, 160, 160);
-
-      // Barcode text
-      ctx.fillStyle = '#64748b';
-      ctx.font = '12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(ticket.barcode, 260, 340);
-
-      // Right section - Event details
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 36px Arial';
-
-      const maxWidth = 700;
-      let eventNameLines = [];
+      const maxWidth = 680;
+      let eventNameLines: string[] = [];
       let words = eventName.split(' ');
       let currentLine = '';
 
@@ -340,57 +376,159 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       }
       eventNameLines.push(currentLine.trim());
 
-      let yPos = 80;
+      let yPos = 70;
       eventNameLines.forEach((line, index) => {
-        ctx.fillText(line, 450, yPos + (index * 45));
+        ctx.fillText(line, canvas.width / 2, yPos + (index * 40));
       });
+      ctx.shadowBlur = 0;
 
-      yPos += eventNameLines.length * 45 + 20;
+      yPos += eventNameLines.length * 40 + 20;
 
-      // Decorative line
-      ctx.strokeStyle = '#3b82f6';
+      // Golden decorative line
+      const lineGradient = ctx.createLinearGradient(canvas.width / 2 - 200, yPos, canvas.width / 2 + 200, yPos);
+      lineGradient.addColorStop(0, 'rgba(212, 175, 55, 0)');
+      lineGradient.addColorStop(0.5, 'rgba(212, 175, 55, 1)');
+      lineGradient.addColorStop(1, 'rgba(212, 175, 55, 0)');
+      ctx.strokeStyle = lineGradient;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(450, yPos);
-      ctx.lineTo(650, yPos);
+      ctx.moveTo(canvas.width / 2 - 200, yPos);
+      ctx.lineTo(canvas.width / 2 + 200, yPos);
       ctx.stroke();
 
       yPos += 40;
 
-      // Ticket details
-      ctx.fillStyle = '#475569';
+      // Ticket type badge - centered
+      const badgeY = yPos;
+      const badgeX = canvas.width / 2;
+      const badgeWidth = 200;
+      const badgeHeight = 50;
+
+      const badgeGradient = ctx.createLinearGradient(badgeX - badgeWidth/2, badgeY, badgeX + badgeWidth/2, badgeY);
+      badgeGradient.addColorStop(0, '#d4af37');
+      badgeGradient.addColorStop(0.5, '#f4e5a1');
+      badgeGradient.addColorStop(1, '#d4af37');
+      ctx.fillStyle = badgeGradient;
+
+      ctx.beginPath();
+      ctx.roundRect(badgeX - badgeWidth/2, badgeY - badgeHeight/2, badgeWidth, badgeHeight, 10);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e293b';
       ctx.font = 'bold 18px Arial';
-      ctx.fillText('TICKET DETAILS', 450, yPos);
-
-      yPos += 30;
-      ctx.fillStyle = '#64748b';
-      ctx.font = '16px Arial';
-      ctx.fillText(`Type: ${ticket.ticketName}`, 450, yPos);
-
-      yPos += 30;
-      ctx.fillText(`Price: KES ${ticket.ticketPrice.toFixed(2)}`, 450, yPos);
-
-      yPos += 30;
-      ctx.fillText(`Status: ${ticket.status}`, 450, yPos);
-
-      yPos += 30;
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '12px Arial';
-      ctx.fillText(`Ticket ID: ${ticket.id}`, 450, yPos);
-
-      // Bottom section
-      const bottomY = canvas.height - 60;
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillRect(25, bottomY - 20, canvas.width - 50, 60);
-
-      ctx.fillStyle = '#475569';
-      ctx.font = 'bold 14px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('PRESENT THIS TICKET AT THE ENTRANCE', canvas.width / 2, bottomY + 10);
+      ctx.fillText(ticket.ticketName.toUpperCase(), badgeX, badgeY + 6);
 
-      ctx.fillStyle = '#94a3b8';
+      yPos += 60;
+
+      // QR Code section - centered and prominent
+      const qrSize = 280;
+      const qrX = canvas.width / 2 - qrSize / 2;
+      const qrY = yPos;
+
+      // QR background with shadow
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetY = 5;
+      ctx.beginPath();
+      ctx.roundRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40, 15);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Load and draw QR code
+      const qrImage = new window.Image();
+      qrImage.crossOrigin = 'anonymous';
+
+      await new Promise((resolve, reject) => {
+        qrImage.onload = resolve;
+        qrImage.onerror = reject;
+        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(ticket.barcode)}`;
+      });
+
+      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+      yPos += qrSize + 30;
+
+      // Barcode text below QR - centered
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.6)';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(ticket.barcode, canvas.width / 2, yPos);
+
+      yPos += 30;
+
+      // Ticket details section - centered
+      const detailsX = canvas.width / 2;
+
+      ctx.fillStyle = '#d4af37';
+      ctx.font = 'bold 20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('TICKET DETAILS', detailsX, yPos);
+
+      yPos += 35;
+
+      // Detail items - centered
+      const details = [
+        { label: 'Price', value: `KES ${ticket.ticketPrice.toFixed(2)}` },
+        { label: 'Status', value: ticket.status },
+      ];
+
+      ctx.font = '16px Arial';
+      details.forEach((detail, index) => {
+        ctx.fillStyle = 'rgba(248, 250, 252, 0.6)';
+        ctx.fillText(`${detail.label}: `, detailsX - 80, yPos + (index * 28));
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(detail.value, detailsX + 20, yPos + (index * 28));
+        ctx.font = '16px Arial';
+      });
+
+      yPos += details.length * 28 + 20;
+
+      // Ticket ID in a premium box - centered
+      const idBoxWidth = 500;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.beginPath();
+      ctx.roundRect(canvas.width / 2 - idBoxWidth / 2, yPos - 10, idBoxWidth, 50, 8);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.6)';
+      ctx.font = '11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('TICKET ID', canvas.width / 2, yPos + 8);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '12px monospace';
+      ctx.fillText(ticket.id, canvas.width / 2, yPos + 28);
+
+      yPos += 70;
+
+      // Footer text - centered
+      ctx.fillStyle = '#d4af37';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('PRESENT THIS TICKET AT THE ENTRANCE', canvas.width / 2, yPos);
+
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.5)';
       ctx.font = '12px Arial';
-      ctx.fillText('This ticket is non-transferable and valid for one-time entry only', canvas.width / 2, bottomY + 30);
+      ctx.fillText('Valid for one-time entry only', canvas.width / 2, yPos + 22);
+
+      // Watermark
+      ctx.fillStyle = 'rgba(212, 175, 55, 0.08)';
+      ctx.font = 'bold 100px Arial';
+      ctx.textAlign = 'center';
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 6);
+      ctx.fillText('TOKEA', 0, 0);
+      ctx.restore();
 
       // Convert to blob and share
       canvas.toBlob(async (blob) => {
@@ -404,12 +542,12 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
           try {
             await navigator.share({
               title: `Ticket for ${eventName}`,
-              text: `My ticket for ${eventName} - ${ticket.ticketName}`,
+              text: `My premium ticket for ${eventName} - ${ticket.ticketName}`,
               files: [file],
             });
             toast({
               title: 'Ticket Shared',
-              description: 'Your ticket has been shared successfully.',
+              description: 'Your premium ticket has been shared successfully.',
             });
           } catch (error: any) {
             if (error.name !== 'AbortError') {
