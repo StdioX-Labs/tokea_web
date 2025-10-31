@@ -7,8 +7,9 @@ import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { Ticket, Calendar, User, Mail, Loader2 } from 'lucide-react';
+import { Ticket, Calendar, User, Mail, Loader2, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { getPublicOrderDetails } from '@/services/event-service';
 import { useToast } from '@/hooks/use-toast';
 
@@ -42,6 +43,106 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
     
     fetchOrder();
   }, [params.orderId, toast]);
+
+  const downloadTicket = async (ticket: any, eventName: string) => {
+    if (!ticket.barcode) {
+      toast({
+        variant: 'destructive',
+        title: 'No QR Code',
+        description: 'This ticket does not have a QR code to download.',
+      });
+      return;
+    }
+
+    try {
+      // Create a canvas to draw the ticket
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Set canvas size (ticket dimensions)
+      canvas.width = 800;
+      canvas.height = 400;
+
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Add border
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+      // Event name
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 28px Arial';
+      ctx.fillText(eventName, 40, 60);
+
+      // Separator line
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(40, 80);
+      ctx.lineTo(760, 80);
+      ctx.stroke();
+
+      // Ticket name
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 20px Arial';
+      ctx.fillText(ticket.ticketName, 40, 120);
+
+      // Ticket details
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '16px Arial';
+      ctx.fillText(`Price: KES ${ticket.ticketPrice.toFixed(2)}`, 40, 160);
+      ctx.fillText(`Status: ${ticket.status}`, 40, 190);
+      ctx.fillText(`Ticket ID: ${ticket.id}`, 40, 220);
+
+      // Load and draw QR code
+      const qrImage = new window.Image();
+      qrImage.crossOrigin = 'anonymous';
+
+      await new Promise((resolve, reject) => {
+        qrImage.onload = resolve;
+        qrImage.onerror = reject;
+        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(ticket.barcode)}`;
+      });
+
+      ctx.drawImage(qrImage, 500, 100, 250, 250);
+
+      // Barcode text
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '14px monospace';
+      const barcodeText = ticket.barcode;
+      const textWidth = ctx.measureText(barcodeText).width;
+      ctx.fillText(barcodeText, 625 - textWidth / 2, 370);
+
+      // Convert canvas to blob and download
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ticket-${ticket.id}-${eventName.replace(/\s+/g, '-')}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: 'Ticket Downloaded',
+          description: 'Your ticket has been downloaded successfully.',
+        });
+      });
+    } catch (error) {
+      console.error('Error downloading ticket:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Download Failed',
+        description: 'Failed to download the ticket. Please try again.',
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -113,21 +214,34 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
                                     </div>
                                 </div>
                             </div>
-                           <div className='flex-shrink-0 flex flex-col justify-center items-center gap-1 p-2 bg-muted rounded-md'>
-                                {ticket.barcode ? (
-                                    <>
-                                        <Image
-                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(ticket.barcode)}`}
-                                            alt={`QR Code for ticket ${ticket.id}`}
-                                            width={100}
-                                            height={100}
-                                        />
-                                        <p className="font-mono text-xs text-muted-foreground">{ticket.barcode}</p>
-                                    </>
-                                ) : (
-                                    <div className="w-[100px] h-[100px] flex items-center justify-center text-muted-foreground text-xs text-center">
-                                        No QR Code
-                                    </div>
+                           <div className='flex-shrink-0 flex flex-col justify-center items-center gap-2'>
+                                <div className='p-2 bg-muted rounded-md'>
+                                    {ticket.barcode ? (
+                                        <>
+                                            <Image
+                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(ticket.barcode)}`}
+                                                alt={`QR Code for ticket ${ticket.id}`}
+                                                width={100}
+                                                height={100}
+                                            />
+                                            <p className="font-mono text-xs text-muted-foreground text-center mt-1">{ticket.barcode}</p>
+                                        </>
+                                    ) : (
+                                        <div className="w-[100px] h-[100px] flex items-center justify-center text-muted-foreground text-xs text-center">
+                                            No QR Code
+                                        </div>
+                                    )}
+                                </div>
+                                {ticket.barcode && (
+                                    <Button
+                                        onClick={() => downloadTicket(ticket, order.eventName)}
+                                        size="sm"
+                                        variant="outline"
+                                        className="w-full"
+                                    >
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Download Ticket
+                                    </Button>
                                 )}
                             </div>
                         </div>
