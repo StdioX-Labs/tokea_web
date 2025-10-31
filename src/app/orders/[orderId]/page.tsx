@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import type { Order } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -60,7 +59,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       if (!ctx) return;
 
       canvas.width = 1200;
-      canvas.height = 500;
+      ctx.height = 500;
 
       // Gradient background
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -248,7 +247,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       if (!ctx) return;
 
       canvas.width = 1200;
-      canvas.height = 500;
+      ctx.height = 500;
 
       // Gradient background
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -500,11 +499,10 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
                 <p className='flex items-center gap-2 text-sm'><Calendar className='w-4 h-4 text-muted-foreground' />{format(new Date(order.orderDate), "PPP, p")}</p>
               </div>
               <div className='md:col-span-3 relative aspect-video overflow-hidden rounded-lg min-h-[200px] bg-muted'>
-                <Image
+                <img
                   src={order.posterUrl}
                   alt={`Poster for ${order.eventName}`}
-                  fill
-                  className="object-cover"
+                  className="object-cover w-full h-full"
                 />
               </div>
             </div>
@@ -595,7 +593,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
                     {ticket.barcode ? (
                       <div className="text-center">
                         <div className="bg-background p-4 rounded-xl shadow-lg mb-4 inline-block border">
-                          <Image
+                          <img
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(ticket.barcode)}`}
                             alt={`QR Code for ticket ${ticket.id}`}
                             width={180}
