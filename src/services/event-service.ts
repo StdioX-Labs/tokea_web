@@ -376,12 +376,26 @@ function transformApiUserEventToEvent(apiEvent: ApiUserEvent): Event {
 
 export async function getEvents(): Promise<Event[]> {
   const response = await apiClient<ApiNewEventResponse>('/event/report/get?companyId=54');
-  return response.data.events.map(transformApiNewEventToEvent);
+  const events = response.data.events.map(transformApiNewEventToEvent);
+
+  // Sort events by date (earliest first)
+  return events.sort((a, b) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    return dateA - dateB;
+  });
 }
 
 export async function getCompanyEvents(): Promise<Event[]> {
   const response = await apiClient<{ events: ApiAdminEvent[] }>('/company/events/get');
-  return response.events.map(transformApiAdminEventToEvent);
+  const events = response.events.map(transformApiAdminEventToEvent);
+
+  // Sort events by date (earliest first)
+  return events.sort((a, b) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    return dateA - dateB;
+  });
 }
 
 export async function getEventById(id: string): Promise<Event | null> {

@@ -61,14 +61,14 @@ export default function EventDetailsPage({ params }: { params: { slug: string } 
             {/* Image Column */}
             <div className="w-full lg:sticky top-24">
               {imageError ? (
-                <div className="aspect-[2/3] w-full bg-gray-200 flex items-center justify-center rounded-xl">
+                <div className="aspect-[4/5] w-full bg-gray-200 flex items-center justify-center rounded-xl">
                   <span className="text-gray-500">Image unavailable</span>
                 </div>
               ) : (
                 <img
                   src={event.posterImage}
                   alt={`Poster for ${event.name}`}
-                  className="w-full h-auto object-cover rounded-xl shadow-lg aspect-[2/3] transition-transform duration-300 hover:scale-105"
+                  className="w-full h-auto object-cover rounded-xl shadow-lg aspect-[4/5] transition-transform duration-300 hover:scale-105"
                   onError={() => {
                     console.error(`Failed to load image: ${event.posterImage}`);
                     setImageError(true);
