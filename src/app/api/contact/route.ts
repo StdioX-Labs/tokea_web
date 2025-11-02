@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -25,11 +23,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if API key is available
+    if (!process.env.RESEND_API_KEY) {
+      console.error('RESEND_API_KEY is not configured');
+      return NextResponse.json(
+        { error: 'Email service is not configured. Please contact support.' },
+        { status: 500 }
+      );
+    }
+
+    // Initialize Resend only when needed
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
     // Send email using Resend
     try {
       await resend.emails.send({
-        from: 'Tokea Contact Form <onboarding@resend.dev>', // You'll need to update this with your verified domain
-        to: 'brian@stdiox.com',
+        from: 'Tokea Contact Form <onboarding@resend.dev>',
+        to: 'info@tokea.com',
         replyTo: email,
         subject: `Contact Form: ${subject}`,
         html: `
