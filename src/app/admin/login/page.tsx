@@ -29,39 +29,39 @@ import { requestOtpAction, verifyOtpAction } from '@/app/actions/auth-actions';
 
 // OTP Login Schema
 const otpRequestSchema = z.object({
-  mobileNumber: z.string().min(12, { message: 'Please enter a valid mobile number (e.g., 254717286026).' }),
+  email: z.string().email({ message: 'Please enter a valid email address.' }),
 });
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [loginStep, setLoginStep] = useState<'phone' | 'otp'>('phone');
-  const [mobileNumber, setMobileNumber] = useState('');
+  const [loginStep, setLoginStep] = useState<'email' | 'otp'>('email');
+  const [email, setEmail] = useState('');
   const [otpValue, setOtpValue] = useState('');
 
-  // Form for mobile number input
-  const phoneForm = useForm<z.infer<typeof otpRequestSchema>>({
+  // Form for email input
+  const emailForm = useForm<z.infer<typeof otpRequestSchema>>({
     resolver: zodResolver(otpRequestSchema),
     defaultValues: {
-      mobileNumber: '',
+      email: '',
     },
   });
 
   async function requestOTP(values: z.infer<typeof otpRequestSchema>) {
     setIsLoading(true);
     try {
-      // Store mobile number in state for later use
-      setMobileNumber(values.mobileNumber);
+      // Store email in state for later use
+      setEmail(values.email);
 
       // Make the actual API call via server action
-      console.log('Requesting OTP for mobile number:', values.mobileNumber);
-      const result = await requestOtpAction(values.mobileNumber);
+      console.log('Requesting OTP for email:', values.email);
+      const result = await requestOtpAction(values.email);
 
       if (result.success) {
         toast({
           title: 'OTP Sent',
-          description: 'Please check your phone for the OTP.',
+          description: 'Please check your email for the OTP.',
         });
 
         // Clear any previous OTP value
@@ -86,40 +86,7 @@ export default function LoginPage() {
     }
   }
 
-  // Helper to login user after OTP validation
-  async function loginUser(mobileNumber: string) {
-    const API_BASE_URL = 'https://api.soldoutafrica.com/api/v1';
-    const password = 's0ascAnn3r@56YearsLater!';
-    try {
-      const response = await fetch(`${API_BASE_URL}/user/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          mobile_number: mobileNumber,
-          password,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('Login failed');
-      }
-      const data = await response.json();
-      if (data.status === true && data.user && data.user.length > 0) {
-        // Store user info and login timestamp for session timeout
-        localStorage.setItem('adminUser', JSON.stringify({
-          ...data.user[0],
-          isLoggedIn: true,
-          loginTime: Date.now(),
-        }));
-        return { success: true, user: data.user[0] };
-      }
-      return { success: false, message: data.message || 'Login failed' };
-    } catch (error) {
-      return { success: false, message: 'Login failed' };
-    }
-  }
+
 
   async function handleVerifyOTP(e: React.FormEvent) {
     e.preventDefault();
@@ -136,25 +103,23 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       // Make the actual API call via server action
-      console.log('Verifying OTP:', otpValue, 'for mobile:', mobileNumber);
-      const result = await verifyOtpAction(otpValue, mobileNumber);
+      console.log('Verifying OTP for email:', email);
+      const result = await verifyOtpAction(otpValue, email);
 
-      if (result.success) {
-        // Now login the user with default password
-        const loginResult = await loginUser(mobileNumber);
-        if (loginResult.success) {
-          toast({
-            title: 'Login Successful',
-            description: `Welcome, ${loginResult.user.fullName}!`,
-          });
-          router.push('/admin/dashboard');
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: loginResult.message || 'Could not log in after OTP validation.',
-          });
-        }
+      if (result.success && 'user' in result && result.user) {
+        toast({
+          title: 'Login Successful',
+          description: `Welcome back!`,
+        });
+
+        // Store user info in localStorage for session management
+        localStorage.setItem('adminUser', JSON.stringify({
+          ...result.user,
+          isLoggedIn: true,
+          loginTime: Date.now(),
+        }));
+
+        router.push('/admin/dashboard');
       } else {
         toast({
           variant: 'destructive',
@@ -189,24 +154,25 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-headline">Admin Login</CardTitle>
           <CardDescription>
-            {loginStep === 'phone'
-              ? 'Enter your mobile number to receive an OTP.'
-              : `Enter the 4-digit OTP sent to ${mobileNumber}`}
+            {loginStep === 'email'
+              ? 'Enter your email address to receive an OTP.'
+              : `Enter the 4-digit OTP sent to ${email}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loginStep === 'phone' ? (
-            <Form {...phoneForm}>
-              <form onSubmit={phoneForm.handleSubmit(requestOTP)} className="space-y-6">
+          {loginStep === 'email' ? (
+            <Form {...emailForm}>
+              <form onSubmit={emailForm.handleSubmit(requestOTP)} className="space-y-6">
                 <FormField
-                  control={phoneForm.control}
-                  name="mobileNumber"
+                  control={emailForm.control}
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mobile Number</FormLabel>
+                      <FormLabel>Email Address</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="254717286026"
+                          type="email"
+                          placeholder="admin@example.com"
                           {...field}
                           disabled={isLoading}
                         />
@@ -270,7 +236,7 @@ export default function LoginPage() {
                   type="button"
                   variant="outline"
                   className="w-full"
-                  onClick={() => setLoginStep('phone')}
+                  onClick={() => setLoginStep('email')}
                   disabled={isLoading}
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />

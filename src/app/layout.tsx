@@ -2,9 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { CartProvider } from '@/context/cart-provider';
-import Header from '@/components/header';
-import Footer from '@/components/footer';
 import { ThemeProvider } from '@/components/theme-provider';
+import ConditionalLayout from '@/components/conditional-layout';
 
 export const metadata: Metadata = {
   title: 'Tokea - Event Tickets',
@@ -34,11 +33,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <CartProvider>
-            <div className="flex min-h-screen flex-col">
-              <Header />
-              <main className="flex-grow">{children}</main>
-              <Footer />
-            </div>
+            <ConditionalLayout>{children}</ConditionalLayout>
             <Toaster />
           </CartProvider>
         </ThemeProvider>

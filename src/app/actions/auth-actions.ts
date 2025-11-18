@@ -8,17 +8,44 @@ const username = '254717286026';
 const password = 's0ascAnn3r@56YearsLater!';
 const encodedCredentials = Buffer.from(`${username}:${password}`).toString('base64');
 
-export async function requestOtpAction(mobileNumber: string) {
+interface User {
+  phoneNumber: string;
+  role: string;
+  is_active: boolean;
+  kycStatus: string;
+  profile_type: string | null;
+  company_id: number;
+  user_id: number;
+  company_name: string;
+  currency: string;
+  email: string;
+}
+
+interface OtpResponse {
+  otp: string;
+  message: string;
+  user: User;
+  status: boolean;
+}
+
+// Store OTP data temporarily (in production, use Redis or similar)
+const otpStore = new Map<string, { otp: string; user: User; timestamp: number }>();
+
+export async function requestOtpAction(email: string) {
   try {
-    const url = `${API_BASE_URL}/user/external/challange?mobileNumber=${mobileNumber}`;
+    const url = `${API_BASE_URL}/user/otp/login`;
 
     const response = await fetch(url, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization': `Basic ${encodedCredentials}`,
       },
+      body: JSON.stringify({
+        id: email,
+        method: 'email',
+      }),
       cache: 'no-store',
     });
 
@@ -28,7 +55,24 @@ export async function requestOtpAction(mobileNumber: string) {
       return { success: false, message: `Error: ${response.status}` };
     }
 
-    const data = await response.json();
+    const data: OtpResponse = await response.json();
+
+    // Store OTP and user data server-side for validation (expires in 5 minutes)
+    otpStore.set(email, {
+      otp: data.otp,
+      user: data.user,
+      timestamp: Date.now()
+    });
+
+    // Clean up expired OTPs (older than 5 minutes)
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    for (const [key, value] of otpStore.entries()) {
+      if (value.timestamp < fiveMinutesAgo) {
+        otpStore.delete(key);
+      }
+    }
+
+    // Don't return the OTP or user data to the client
     return {
       success: data.status === true,
       message: data.message || 'OTP sent successfully'
@@ -39,36 +83,39 @@ export async function requestOtpAction(mobileNumber: string) {
   }
 }
 
-export async function verifyOtpAction(otp: string, mobileNumber: string) {
+export async function verifyOtpAction(otp: string, email: string) {
   try {
-    const url = `${API_BASE_URL}/otp/validate`;
+    // Get stored OTP data
+    const storedData = otpStore.get(email);
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Basic ${encodedCredentials}`,
-      },
-      body: JSON.stringify({
-        otp,
-        mobileNumber,
-      }),
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OTP Verification failed:', response.status, errorText);
-      return { success: false, message: `Error: ${response.status}` };
+    if (!storedData) {
+      return {
+        success: false,
+        message: 'OTP expired or not found. Please request a new one.'
+      };
     }
 
-    const data = await response.json();
+    // Check if OTP is expired (5 minutes)
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    if (storedData.timestamp < fiveMinutesAgo) {
+      otpStore.delete(email);
+      return {
+        success: false,
+        message: 'OTP expired. Please request a new one.'
+      };
+    }
 
-    // Set authentication cookie if successful
-    if (data.status === true) {
-      cookies().set('adminUser', JSON.stringify({
-        mobileNumber,
+    // Validate the OTP
+    if (storedData.otp === otp) {
+      // Clear the OTP after successful validation
+      otpStore.delete(email);
+
+      // Set authentication cookie
+      const cookieStore = await cookies();
+      cookieStore.set('adminUser', JSON.stringify({
+        email: storedData.user.email,
+        userId: storedData.user.user_id,
+        role: storedData.user.role,
         isLoggedIn: true,
         timestamp: Date.now()
       }), {
@@ -77,12 +124,19 @@ export async function verifyOtpAction(otp: string, mobileNumber: string) {
         maxAge: 60 * 60 * 24 * 7, // 1 week
         path: '/',
       });
-    }
 
-    return {
-      success: data.status === true,
-      message: data.message || 'OTP verified successfully'
-    };
+      // Return user data for client-side storage (without the OTP)
+      return {
+        success: true,
+        message: 'OTP verified successfully',
+        user: storedData.user
+      };
+    } else {
+      return {
+        success: false,
+        message: 'Invalid OTP. Please try again.'
+      };
+    }
   } catch (error) {
     console.error('Error verifying OTP:', error);
     return { success: false, message: 'Failed to verify OTP' };
