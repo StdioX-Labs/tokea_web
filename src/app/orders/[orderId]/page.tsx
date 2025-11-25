@@ -46,6 +46,21 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ orderId
     fetchOrder();
   }, [orderId, toast]);
 
+  const getTicketStatusInfo = (status: string) => {
+    switch (status) {
+      case 'VALID':
+        return { color: '#10b981', bgClass: 'bg-green-500 hover:bg-green-600', label: '✓ VALID', shortLabel: '✓ VALID TICKET', icon: '\u2713' };
+      case 'REDEEMED':
+        return { color: '#64748b', bgClass: 'bg-gray-500 hover:bg-gray-600', label: '✗ REDEEMED', shortLabel: '✗ REDEEMED', icon: '\u2717' };
+      case 'REVOKED':
+        return { color: '#dc2626', bgClass: 'bg-red-600 hover:bg-red-700', label: '⊗ REVOKED', shortLabel: '⊗ REVOKED', icon: '\u2297' };
+      case 'PENDING_PAYMENT':
+        return { color: '#f59e0b', bgClass: 'bg-amber-500 hover:bg-amber-600', label: '⧗ PENDING', shortLabel: '⧗ PENDING PAYMENT', icon: '\u29D7' };
+      default:
+        return { color: '#64748b', bgClass: 'bg-gray-400 hover:bg-gray-500', label: status, shortLabel: status, icon: '' };
+    }
+  };
+
   const downloadTicket = async (ticket: any, eventName: string) => {
     if (!ticket.barcode) {
       toast({
@@ -159,9 +174,9 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ orderId
       // Status Badge - movie ticket style
       const statusBadgeWidth = 320;
       const statusBadgeHeight = 75;
-      const statusColor = ticket.status === 'VALID' ? '#10b981' : '#dc2626';
+      const statusInfo = getTicketStatusInfo(ticket.status);
 
-      ctx.fillStyle = statusColor;
+      ctx.fillStyle = statusInfo.color;
       ctx.beginPath();
       ctx.roundRect(canvas.width / 2 - statusBadgeWidth / 2, yPos - statusBadgeHeight / 2, statusBadgeWidth, statusBadgeHeight, 10);
       ctx.fill();
@@ -169,8 +184,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ orderId
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 36px Arial';
       ctx.textAlign = 'center';
-      const statusText = ticket.status === 'VALID' ? '\u2713 VALID' : '\u2717 USED';
-      ctx.fillText(statusText, canvas.width / 2, yPos + 12);
+      ctx.fillText(statusInfo.label, canvas.width / 2, yPos + 12);
 
       yPos += 80;
 
@@ -530,9 +544,9 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ orderId
       // Status Badge - movie ticket style
       const statusBadgeWidth = 320;
       const statusBadgeHeight = 75;
-      const statusColor = ticket.status === 'VALID' ? '#10b981' : '#dc2626';
+      const statusInfo = getTicketStatusInfo(ticket.status);
 
-      ctx.fillStyle = statusColor;
+      ctx.fillStyle = statusInfo.color;
       ctx.beginPath();
       ctx.roundRect(canvas.width / 2 - statusBadgeWidth / 2, yPos - statusBadgeHeight / 2, statusBadgeWidth, statusBadgeHeight, 10);
       ctx.fill();
@@ -540,8 +554,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ orderId
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 36px Arial';
       ctx.textAlign = 'center';
-      const statusText = ticket.status === 'VALID' ? '\u2713 VALID' : '\u2717 USED';
-      ctx.fillText(statusText, canvas.width / 2, yPos + 12);
+      ctx.fillText(statusInfo.label, canvas.width / 2, yPos + 12);
 
       yPos += 80;
 
@@ -913,12 +926,9 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ orderId
                     <div className="mb-3 md:mb-4">
                       <Badge
                         variant={ticket.status === 'VALID' ? 'default' : 'secondary'}
-                        className={`text-xs sm:text-sm md:text-base px-3 sm:px-4 py-1.5 sm:py-2 font-bold ${ticket.status === 'VALID'
-                          ? 'bg-green-500 hover:bg-green-600 text-white'
-                          : 'bg-gray-400 hover:bg-gray-500 text-white'
-                          }`}
+                        className={`text-xs sm:text-sm md:text-base px-3 sm:px-4 py-1.5 sm:py-2 font-bold ${getTicketStatusInfo(ticket.status).bgClass} text-white`}
                       >
-                        {ticket.status === 'VALID' ? '✓ VALID TICKET' : '✗ ALREADY REDEEMED'}
+                        {getTicketStatusInfo(ticket.status).shortLabel}
                       </Badge>
                     </div>
 
@@ -979,12 +989,9 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ orderId
                         <div className="mb-4">
                           <Badge
                             variant={ticket.status === 'VALID' ? 'default' : 'secondary'}
-                            className={`text-sm sm:text-base md:text-lg px-4 py-2 font-bold ${ticket.status === 'VALID'
-                              ? 'bg-green-500 hover:bg-green-600 text-white'
-                              : 'bg-gray-400 hover:bg-gray-500 text-white'
-                              }`}
+                            className={`text-sm sm:text-base md:text-lg px-4 py-2 font-bold ${getTicketStatusInfo(ticket.status).bgClass} text-white`}
                           >
-                            {ticket.status === 'VALID' ? '✓ VALID' : '✗ REDEEMED'}
+                            {getTicketStatusInfo(ticket.status).label}
                           </Badge>
                         </div>
 
