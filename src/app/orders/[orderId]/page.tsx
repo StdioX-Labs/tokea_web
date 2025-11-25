@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, use } from 'react';
 import type { Order } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,17 +11,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getPublicOrderDetails } from '@/services/event-service';
 import { useToast } from '@/hooks/use-toast';
+import { QRCode } from '@/components/ui/qr-code';
 
-export default function OrderDetailsPage({ params }: { params: { orderId: string } }) {
+export default function OrderDetailsPage({ params }: { params: Promise<{ orderId: string }> }) {
+  const { orderId } = use(params);
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const qrCodeRef = useRef<QRCode>(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
       setIsLoading(true);
       try {
-        const fetchedOrder = await getPublicOrderDetails(params.orderId);
+        const fetchedOrder = await getPublicOrderDetails(orderId);
         if (fetchedOrder) {
           setOrder(fetchedOrder);
         } else {
@@ -41,7 +44,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
     };
 
     fetchOrder();
-  }, [params.orderId, toast]);
+  }, [orderId, toast]);
 
   const downloadTicket = async (ticket: any, eventName: string) => {
     if (!ticket.barcode) {
@@ -224,17 +227,47 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       ctx.lineTo(qrX + qrSize + 25, qrY + qrSize + 25 - cornerSize);
       ctx.stroke();
 
-      // Load and draw QR code
-      const qrImage = new window.Image();
-      qrImage.crossOrigin = 'anonymous';
+      // Load and draw QR code - using QRCode component
+      const qrContainer = document.createElement('div');
+      qrContainer.style.position = 'absolute';
+      qrContainer.style.left = '-9999px';
+      document.body.appendChild(qrContainer);
 
-      await new Promise((resolve, reject) => {
-        qrImage.onload = resolve;
-        qrImage.onerror = reject;
-        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(ticket.barcode)}`;
+      const qrWrapper = document.createElement('div');
+      qrContainer.appendChild(qrWrapper);
+
+      const { createRoot } = await import('react-dom/client');
+      const root = createRoot(qrWrapper);
+
+      await new Promise<HTMLCanvasElement>((resolve) => {
+        root.render(
+          <QRCode
+            value={ticket.barcode}
+            size={500}
+            quietZone={10}
+            bgColor="#FFFFFF"
+            fgColor="#000000"
+            qrStyle="fluid"
+            eyeRadius={[
+              { outer: 10, inner: 0 },
+              { outer: 10, inner: 0 },
+              { outer: 10, inner: 0 }
+            ]}
+            eyeColor="#dc2626"
+          />
+        );
+
+        setTimeout(() => {
+          const qrCanvas = qrWrapper.querySelector('canvas');
+          if (qrCanvas) {
+            resolve(qrCanvas);
+          }
+        }, 100);
+      }).then((qrCanvas) => {
+        ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+        root.unmount();
+        document.body.removeChild(qrContainer);
       });
-
-      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
       yPos += qrSize + 55;
 
@@ -402,24 +435,24 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       canvas.width = 1080;
       canvas.height = 1920;
 
-      // Movie ticket style - dark burgundy/maroon gradient background
+      // Movie ticket style - black and red gradient background
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, '#1a0b0f');
-      gradient.addColorStop(0.5, '#2d1319');
-      gradient.addColorStop(1, '#1a0b0f');
+      gradient.addColorStop(0, '#000000');
+      gradient.addColorStop(0.5, '#0a0a0a');
+      gradient.addColorStop(1, '#000000');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Golden top bar - movie ticket style
-      const goldGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-      goldGradient.addColorStop(0, '#8B6914');
-      goldGradient.addColorStop(0.5, '#DAA520');
-      goldGradient.addColorStop(1, '#8B6914');
-      ctx.fillStyle = goldGradient;
+      // Red top bar - movie ticket style
+      const redGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      redGradient.addColorStop(0, '#b91c1c');
+      redGradient.addColorStop(0.5, '#dc2626');
+      redGradient.addColorStop(1, '#b91c1c');
+      ctx.fillStyle = redGradient;
       ctx.fillRect(0, 0, canvas.width, 20);
 
       // Decorative perforated edge effect at top
-      ctx.fillStyle = '#1a0b0f';
+      ctx.fillStyle = '#000000';
       for (let i = 0; i < canvas.width; i += 40) {
         ctx.beginPath();
         ctx.arc(i, 20, 8, 0, Math.PI * 2);
@@ -429,7 +462,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       let yPos = 100;
 
       // "ADMIT ONE" header - classic ticket style
-      ctx.fillStyle = '#DAA520';
+      ctx.fillStyle = '#dc2626';
       ctx.font = 'bold 36px Arial';
       ctx.textAlign = 'center';
       ctx.letterSpacing = '8px';
@@ -441,7 +474,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       ctx.fillStyle = '#f8fafc';
       ctx.font = 'bold 56px Arial';
       ctx.textAlign = 'center';
-      ctx.shadowColor = 'rgba(218, 165, 32, 0.3)';
+      ctx.shadowColor = 'rgba(220, 38, 38, 0.3)';
       ctx.shadowBlur = 15;
 
       const maxWidth = 950;
@@ -469,7 +502,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       yPos += eventNameLines.length * 68 + 40;
 
       // Decorative line
-      ctx.strokeStyle = '#DAA520';
+      ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 2;
       ctx.setLineDash([10, 10]);
       ctx.beginPath();
@@ -481,7 +514,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       yPos += 60;
 
       // Ticket Type
-      ctx.fillStyle = '#DAA520';
+      ctx.fillStyle = '#dc2626';
       ctx.font = '28px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('TICKET TYPE', canvas.width / 2, yPos);
@@ -517,9 +550,9 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       const qrX = canvas.width / 2 - qrSize / 2;
       const qrY = yPos;
 
-      // QR background with gold border - movie ticket style
+      // QR background with red border - movie ticket style
       ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = 'rgba(218, 165, 32, 0.4)';
+      ctx.shadowColor = 'rgba(220, 38, 38, 0.4)';
       ctx.shadowBlur = 25;
       ctx.beginPath();
       ctx.roundRect(qrX - 25, qrY - 25, qrSize + 50, qrSize + 50, 15);
@@ -527,14 +560,14 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
 
       ctx.shadowBlur = 0;
 
-      // Gold decorative border
-      ctx.strokeStyle = '#DAA520';
+      // Red decorative border
+      ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 4;
       ctx.stroke();
 
       // Corner decorations
       const cornerSize = 30;
-      ctx.strokeStyle = '#DAA520';
+      ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 6;
 
       // Top-left corner
@@ -565,22 +598,52 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       ctx.lineTo(qrX + qrSize + 25, qrY + qrSize + 25 - cornerSize);
       ctx.stroke();
 
-      // Load and draw QR code
-      const qrImage = new window.Image();
-      qrImage.crossOrigin = 'anonymous';
+      // Load and draw QR code - using QRCode component
+      const qrContainer = document.createElement('div');
+      qrContainer.style.position = 'absolute';
+      qrContainer.style.left = '-9999px';
+      document.body.appendChild(qrContainer);
 
-      await new Promise((resolve, reject) => {
-        qrImage.onload = resolve;
-        qrImage.onerror = reject;
-        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(ticket.barcode)}`;
+      const qrWrapper = document.createElement('div');
+      qrContainer.appendChild(qrWrapper);
+
+      const { createRoot } = await import('react-dom/client');
+      const root = createRoot(qrWrapper);
+
+      await new Promise<HTMLCanvasElement>((resolve) => {
+        root.render(
+          <QRCode
+            value={ticket.barcode}
+            size={500}
+            quietZone={10}
+            bgColor="#FFFFFF"
+            fgColor="#000000"
+            qrStyle="fluid"
+            eyeRadius={[
+              { outer: 10, inner: 0 },
+              { outer: 10, inner: 0 },
+              { outer: 10, inner: 0 }
+            ]}
+            eyeColor="#dc2626"
+          />
+        );
+
+        setTimeout(() => {
+          const qrCanvas = qrWrapper.querySelector('canvas');
+          if (qrCanvas) {
+            resolve(qrCanvas);
+          }
+        }, 100);
+      }).then((qrCanvas) => {
+        ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+        root.unmount();
+        document.body.removeChild(qrContainer);
       });
-
-      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
       yPos += qrSize + 55;
 
       // Barcode text
-      ctx.fillStyle = '#DAA520';
+      ctx.fillStyle = '#dc2626';
       ctx.font = 'bold 24px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(ticket.barcode, canvas.width / 2, yPos);
@@ -594,7 +657,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       yPos += 80;
 
       // Price section - prominent
-      ctx.fillStyle = '#DAA520';
+      ctx.fillStyle = '#dc2626';
       ctx.font = '32px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('TICKET PRICE', canvas.width / 2, yPos);
@@ -608,7 +671,7 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
       yPos += 80;
 
       // Decorative perforated edge effect at bottom section
-      ctx.strokeStyle = '#DAA520';
+      ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 2;
       ctx.setLineDash([10, 10]);
       ctx.beginPath();
@@ -639,13 +702,59 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
 
       ctx.fillText('Non-transferable • No refunds', canvas.width / 2, yPos);
 
-      // Bottom golden bar
+      yPos += 60;
+
+      // Tokea Logo - using SVG data
+      const logoSvg = `
+        <svg height="40" viewBox="0 0 430.63 119.44" xmlns="http://www.w3.org/2000/svg">
+          <g>
+            <path d="M26.79,117.05l-3.14-71L3,48.22l-3-27,74.84-3.7L76.69,44,56,44.52l-.92,74.32Z" fill="#f8fafc"></path>
+            <path d="M113.05,119.44,86.25,112l-4.8-74.68,14.6-16.61,46.75-3.47L155,39.62l-6.65,74.8Zm13.86-23.9,3.69-44.09L118,45,107,51.21l1.48,46.36,10,5Z" fill="#f8fafc"></path>
+            <path d="M161.23,118.25l-1.1-98.71,24.2-2.39,1.85,41.23,12.57-3.59,8.87-37.28,24.94,1.19L222.4,64.59l-8,2,18.11,49.24-24.94,1.55L192.46,71.28l-5,1.32,1.85,43.26Z" fill="#f8fafc"></path>
+            <path d="M253.32,119.08l-16.26-9,2-90.46L301,16.79l2.4,28.08-38.25,3.71L265,62.2l34.55-1.91L297.3,78.21l-32.33,1L264.41,96,301,92.32l3,22.1Z" fill="#f8fafc"></path>
+            <path d="M356,117.05v-4.3l-32.34,3.94L310.3,98.17l2.41-33.34L351,58.74,350.4,45l-12.75.84.56,8.6L312.71,56l-4.25-33.34,39.54-6,29.75,6,2.4,92.85Zm-3.14-43.73-14.05,2-.55,12.19,17,2.62Z" fill="#f8fafc"></path>
+            <path d="M420.1,85.7l-23.19-1.4-9.63-70L395.41.84,422.65,0l8,17.14Zm-24.39,7.87,25.89,1.68-1.81,21.36-22.27.56-4.22-11.8Z" fill="#dc2626"></path>
+          </g>
+        </svg>
+      `;
+
+      const logoBlob = new Blob([logoSvg], { type: 'image/svg+xml' });
+      const logoUrl = URL.createObjectURL(logoBlob);
+      const logoImg = new window.Image();
+
+      await new Promise((resolve, reject) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = reject;
+        logoImg.src = logoUrl;
+      });
+
+      // Draw logo centered
+      const logoWidth = 150;
+      const logoHeight = (logoWidth * 119.44) / 430.63;
+      ctx.drawImage(logoImg, canvas.width / 2 - logoWidth / 2, yPos, logoWidth, logoHeight);
+      URL.revokeObjectURL(logoUrl);
+
+      yPos += logoHeight + 15;
+
+      // "Powered by SoldOutAfrica" text - styled better
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Powered by', canvas.width / 2, yPos);
+
+      yPos += 22;
+
+      ctx.fillStyle = '#dc2626';
+      ctx.font = 'bold 18px Arial';
+      ctx.fillText('SoldOutAfrica', canvas.width / 2, yPos);
+
+      // Bottom red bar
       yPos = canvas.height - 20;
-      ctx.fillStyle = goldGradient;
+      ctx.fillStyle = redGradient;
       ctx.fillRect(0, yPos, canvas.width, 20);
 
       // Decorative perforated edge effect at bottom
-      ctx.fillStyle = '#1a0b0f';
+      ctx.fillStyle = '#000000';
       for (let i = 0; i < canvas.width; i += 40) {
         ctx.beginPath();
         ctx.arc(i, yPos, 8, 0, Math.PI * 2);
@@ -881,12 +990,23 @@ export default function OrderDetailsPage({ params }: { params: { orderId: string
 
                         {/* Larger QR Code - Optimized for Mobile Scanning */}
                         <div className="bg-background p-4 sm:p-5 md:p-6 rounded-lg md:rounded-xl shadow-lg mb-3 md:mb-4 inline-block border mx-auto">
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(ticket.barcode)}`}
-                            alt={`QR Code for ticket ${ticket.id}`}
-                            width={320}
-                            height={320}
-                            className="rounded w-[280px] h-[280px] sm:w-[300px] sm:h-[300px] md:w-[320px] md:h-[320px] lg:w-[340px] lg:h-[340px] mx-auto"
+                          <QRCode
+                            value={ticket.barcode}
+                            size={320}
+                            quietZone={10}
+                            bgColor="#FFFFFF"
+                            fgColor="#000000"
+                            qrStyle="fluid"
+                            eyeRadius={[
+                              { outer: 10, inner: 0 },
+                              { outer: 10, inner: 0 },
+                              { outer: 10, inner: 0 }
+                            ]}
+                            eyeColor="#dc2626"
+                            style={{
+                              maxWidth: '100%',
+                              height: 'auto'
+                            }}
                           />
                         </div>
                         <p className="font-mono text-xs sm:text-sm md:text-base text-muted-foreground mb-2 md:mb-3 break-all px-2 sm:px-3 leading-relaxed font-semibold">{ticket.barcode}</p>
