@@ -127,9 +127,9 @@ export class QRCode extends React.Component<IProps, {}> {
             radii = [radii, radii, radii, radii];
         }
 
-        // Radius should not be greater than half the size or less than zero
+        // Reduce corner radius significantly for more square appearance (max 15% of size)
         radii = radii.map((r) => {
-            r = Math.min(r, size / 2);
+            r = Math.min(r, size * 0.15);
             return (r < 0) ? 0 : r;
         });
 
@@ -327,43 +327,68 @@ export class QRCode extends React.Component<IProps, {}> {
                 }
             }
         } else if (qrStyle === 'fluid') {
-            const radius = Math.ceil(cellSize / 2);
+            // Scanner-optimized: rounded squares with minimal gap for maximum readability
+            const padding = cellSize * 0.05; // Very small gap for better edge detection
+            const cornerRadius = cellSize * 0.2; // Smooth corners reduce scan errors
+
             for (let row = 0; row < length; row++) {
                 for (let col = 0; col < length; col++) {
                     if (qrCode.isDark(row, col) && !this.isInPositioninZone(row, col, positioningZones)) {
-                        let roundedCorners = [false, false, false, false]; // top-left, top-right, bottom-right, bottom-left
-                        if ((row > 0 && !qrCode.isDark(row - 1, col)) && (col > 0 && !qrCode.isDark(row, col - 1))) roundedCorners[0] = true;
-                        if ((row > 0 && !qrCode.isDark(row - 1, col)) && (col < length - 1 && !qrCode.isDark(row, col + 1))) roundedCorners[1] = true;
-                        if ((row < length - 1 && !qrCode.isDark(row + 1, col)) && (col < length - 1 && !qrCode.isDark(row, col + 1))) roundedCorners[2] = true;
-                        if ((row < length - 1 && !qrCode.isDark(row + 1, col)) && (col > 0 && !qrCode.isDark(row, col - 1))) roundedCorners[3] = true;
-                        const w = (Math.ceil((col + 1) * cellSize) - Math.floor(col * cellSize));
-                        const h = (Math.ceil((row + 1) * cellSize) - Math.floor(row * cellSize));
                         ctx.fillStyle = fgColor || '#000000';
+                        const x = Math.round(col * cellSize) + offset + padding;
+                        const y = Math.round(row * cellSize) + offset + padding;
+                        const w = cellSize - (padding * 2);
+                        const h = cellSize - (padding * 2);
+
+                        // Draw rounded rectangle - optimal for scanner edge detection
                         ctx.beginPath();
-                        ctx.arc(
-                            Math.round(col * cellSize) + radius + offset,
-                            Math.round(row * cellSize) + radius + offset,
-                            radius,
-                            0,
-                            2 * Math.PI,
-                            false);
+                        ctx.moveTo(x + cornerRadius, y);
+                        ctx.lineTo(x + w - cornerRadius, y);
+                        ctx.quadraticCurveTo(x + w, y, x + w, y + cornerRadius);
+                        ctx.lineTo(x + w, y + h - cornerRadius);
+                        ctx.quadraticCurveTo(x + w, y + h, x + w - cornerRadius, y + h);
+                        ctx.lineTo(x + cornerRadius, y + h);
+                        ctx.quadraticCurveTo(x, y + h, x, y + h - cornerRadius);
+                        ctx.lineTo(x, y + cornerRadius);
+                        ctx.quadraticCurveTo(x, y, x + cornerRadius, y);
                         ctx.closePath();
                         ctx.fill();
-                        if (!roundedCorners[0]) ctx.fillRect(Math.round(col * cellSize) + offset, Math.round(row * cellSize) + offset, w / 2, h / 2)
-                        if (!roundedCorners[1]) ctx.fillRect(Math.round(col * cellSize) + offset + Math.floor(w / 2), Math.round(row * cellSize) + offset, w / 2, h / 2)
-                        if (!roundedCorners[2]) ctx.fillRect(Math.round(col * cellSize) + offset + Math.floor(w / 2), Math.round(row * cellSize) + offset + Math.floor(h / 2), w / 2, h / 2)
-                        if (!roundedCorners[3]) ctx.fillRect(Math.round(col * cellSize) + offset, Math.round(row * cellSize) + offset + Math.floor(h / 2), w / 2, h / 2)
                     }
                 }
             }
         } else {
+            // Diamond/Geometric style - rotated squares creating a unique pattern
+            const padding = cellSize * 0.1;
             for (let row = 0; row < length; row++) {
                 for (let col = 0; col < length; col++) {
                     if (qrCode.isDark(row, col) && !this.isInPositioninZone(row, col, positioningZones)) {
                         ctx.fillStyle = fgColor || '#000000';
-                        const w = (Math.ceil((col + 1) * cellSize) - Math.floor(col * cellSize));
-                        const h = (Math.ceil((row + 1) * cellSize) - Math.floor(row * cellSize));
-                        ctx.fillRect(Math.round(col * cellSize) + offset, Math.round(row * cellSize) + offset, w, h);
+                        const centerX = Math.round(col * cellSize) + cellSize / 2 + offset;
+                        const centerY = Math.round(row * cellSize) + cellSize / 2 + offset;
+                        const size = cellSize - (padding * 2);
+
+                        // Draw diamond (45-degree rotated square)
+                        ctx.save();
+                        ctx.translate(centerX, centerY);
+                        ctx.rotate(Math.PI / 4); // 45 degrees
+
+                        const halfSize = size / 2;
+                        const cornerRadius = size * 0.15;
+
+                        ctx.beginPath();
+                        ctx.moveTo(-halfSize + cornerRadius, -halfSize);
+                        ctx.lineTo(halfSize - cornerRadius, -halfSize);
+                        ctx.quadraticCurveTo(halfSize, -halfSize, halfSize, -halfSize + cornerRadius);
+                        ctx.lineTo(halfSize, halfSize - cornerRadius);
+                        ctx.quadraticCurveTo(halfSize, halfSize, halfSize - cornerRadius, halfSize);
+                        ctx.lineTo(-halfSize + cornerRadius, halfSize);
+                        ctx.quadraticCurveTo(-halfSize, halfSize, -halfSize, halfSize - cornerRadius);
+                        ctx.lineTo(-halfSize, -halfSize + cornerRadius);
+                        ctx.quadraticCurveTo(-halfSize, -halfSize, -halfSize + cornerRadius, -halfSize);
+                        ctx.closePath();
+                        ctx.fill();
+
+                        ctx.restore();
                     }
                 }
             }

@@ -10,10 +10,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useState, useEffect, useCallback } from 'react';
 import type { Order } from '@/lib/types';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, CheckCircle2, ShieldCheck, Tag } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, ShieldCheck, Tag, CreditCard, Phone } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from '@/components/ui/progress';
 import { purchaseTickets, type PurchasePayload, checkPaymentStatus } from '@/services/event-service';
@@ -25,25 +26,28 @@ const checkoutSchema = z.object({
   phone: z.string().min(10, { message: 'Please enter a valid 10-digit phone number.' }).max(15, { message: 'Phone number is too long.' }),
   mpesaPhone: z.string().min(10, { message: 'Please enter a valid 10-digit phone number.' }).max(15, { message: 'Phone number is too long.' }).optional().or(z.literal('')),
   couponCode: z.string().optional(),
+  termsAccepted: z.boolean().refine((val) => val === true, {
+    message: 'You must accept the terms and conditions to proceed.',
+  }),
 });
 
 type PaymentStatus = 'idle' | 'processing' | 'awaitingVerification' | 'success' | 'error';
 type PaymentMethod = 'mpesa' | 'card';
 
 const formatPhoneNumberForApi = (phone: string | undefined): string => {
-    if (!phone) return '';
-    let cleaned = phone.replace(/\D/g, '');
-    
-    if (cleaned.startsWith('0') && cleaned.length === 10) {
-        return '254' + cleaned.substring(1);
-    }
-    if (cleaned.startsWith('254') && cleaned.length === 12) {
-        return cleaned;
-    }
-    if (cleaned.length === 9) {
-        return '254' + cleaned;
-    }
+  if (!phone) return '';
+  let cleaned = phone.replace(/\D/g, '');
+
+  if (cleaned.startsWith('0') && cleaned.length === 10) {
+    return '254' + cleaned.substring(1);
+  }
+  if (cleaned.startsWith('254') && cleaned.length === 12) {
     return cleaned;
+  }
+  if (cleaned.length === 9) {
+    return '254' + cleaned;
+  }
+  return cleaned;
 }
 
 export default function CheckoutPage() {
@@ -64,20 +68,21 @@ export default function CheckoutPage() {
       phone: '',
       mpesaPhone: '',
       couponCode: '',
+      termsAccepted: false,
     },
   });
-  
+
   useEffect(() => {
     setIsClient(true);
     if (isClient && itemCount === 0 && !ticketGroup) {
       router.replace('/');
     }
   }, [itemCount, router, isClient, ticketGroup]);
-  
+
   const handlePaymentSuccess = useCallback((orderId: string) => {
     clearCart();
     setTimeout(() => {
-        router.push(`/confirmation/${orderId}`);
+      router.push(`/confirmation/${orderId}`);
     }, 1500);
   }, [router, clearCart]);
 
@@ -91,7 +96,7 @@ export default function CheckoutPage() {
     const pollTimeout = 120000;
 
     let pollTimer: NodeJS.Timeout | null = null;
-    
+
     const timeoutTimer = setTimeout(() => {
       if (pollTimer) clearInterval(pollTimer);
       setPaymentStatus('error');
@@ -105,7 +110,7 @@ export default function CheckoutPage() {
     }, pollTimeout);
 
     const poll = async () => {
-      if(!ticketGroup) return;
+      if (!ticketGroup) return;
       const result = await checkPaymentStatus(ticketGroup);
       if (result) {
         if (pollTimer) clearInterval(pollTimer);
@@ -128,7 +133,7 @@ export default function CheckoutPage() {
         handlePaymentSuccess(order.id);
       }
     };
-    
+
     poll();
     pollTimer = setInterval(poll, pollInterval);
 
@@ -167,12 +172,12 @@ export default function CheckoutPage() {
         throw new Error(`Some tickets are no longer available: ${invalidTickets.map(t => t.ticketTypeName).join(', ')}`);
       }
 
-      // Use 'vaspro' as the payment channel
+      // Use different payment channel based on method
       const payload: PurchasePayload = {
         eventId: Number(firstItem.eventId),
         amountDisplayed: cartTotal,
         coupon_code: values.couponCode || "",
-        channel: "vaspro",  // Changed from celcom to vaspro as requested
+        channel: channel === 'card' ? 'card' : 'mpesa',
         customer: {
           email: values.email,
           mobile_number: paymentPhoneNumber,
@@ -206,7 +211,21 @@ export default function CheckoutPage() {
       setTicketGroup(response.ticketGroup);
       console.log('Set ticketGroup to:', response.ticketGroup);
 
-      // Set appropriate payment status based on channel
+      // For card payments, redirect to Paystack checkout
+      if (channel === 'card' && response.checkoutUrl) {
+        setProgress(100);
+        setPaymentStatus('success');
+        // Build the return URL with the ticket group
+        const baseUrl = window.location.origin;
+        const returnUrl = `${baseUrl}/orders/${response.ticketGroup}`;
+        // Append return URL as query parameter to Paystack checkout
+        const checkoutUrlWithReturn = `${response.checkoutUrl}${response.checkoutUrl.includes('?') ? '&' : '?'}callback_url=${encodeURIComponent(returnUrl)}`;
+        // Redirect to Paystack checkout URL
+        window.location.href = checkoutUrlWithReturn;
+        return;
+      }
+
+      // For M-Pesa, set appropriate payment status
       setProgress(95);
       setPaymentStatus('awaitingVerification');
       console.log('Payment status set to awaiting verification');
@@ -230,7 +249,7 @@ export default function CheckoutPage() {
       startPaymentProcess(form.getValues(), channel);
     }
   };
-  
+
   if (!isClient || (itemCount === 0 && !ticketGroup)) {
     return (
       <div className="container py-12 text-center">
@@ -258,12 +277,12 @@ export default function CheckoutPage() {
       {paymentStatus === 'success' && (
         <>
           <CheckCircle2 className="h-16 w-16 text-green-500" />
-            <h3 className="mt-4 text-xl font-semibold">{paymentMethod === 'card' ? 'Redirecting...' : 'Payment Successful!'}</h3>
-            <p className="mt-2 text-muted-foreground">
-                {paymentMethod === 'card' 
-                ? "Please wait while we redirect you to our secure payment partner."
-                : "Redirecting to your order confirmation..."}
-            </p>
+          <h3 className="mt-4 text-xl font-semibold">{paymentMethod === 'card' ? 'Redirecting...' : 'Payment Successful!'}</h3>
+          <p className="mt-2 text-muted-foreground">
+            {paymentMethod === 'card'
+              ? "Please wait while we redirect you to our secure payment partner."
+              : "Redirecting to your order confirmation..."}
+          </p>
         </>
       )}
     </div>
@@ -272,114 +291,187 @@ export default function CheckoutPage() {
   return (
     <div className="container mx-auto max-w-5xl py-12 px-4">
       <Link href="/" className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to events
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to events
       </Link>
       <h1 className="text-3xl font-bold tracking-tight font-headline mb-8">Checkout</h1>
       <Form {...form}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
           <div className='space-y-8'>
-              <Card>
-                  <CardHeader>
-                  <CardTitle className="font-headline">1. Your Information</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                      <div className="space-y-6">
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Full Name</FormLabel>
-                              <FormControl>
-                              <Input placeholder="Jane Doe" {...field} disabled={paymentStatus !== 'idle'} />
-                              </FormControl>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="email"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Email Address</FormLabel>
-                              <FormControl>
-                              <Input placeholder="jane.doe@example.com" {...field} disabled={paymentStatus !== 'idle'} />
-                              </FormControl>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="phone"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Contact Phone Number</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="e.g. 0712345678" {...field} disabled={paymentStatus !== 'idle'} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                      </div>
-                  </CardContent>
-              </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-headline">1. Your Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Jane Doe" {...field} disabled={paymentStatus !== 'idle'} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="jane.doe@example.com" {...field} disabled={paymentStatus !== 'idle'} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Contact Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. 0712345678" {...field} disabled={paymentStatus !== 'idle'} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card>
-                  <CardHeader>
-                      <CardTitle className="font-headline">2. Payment Method</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                       {paymentStatus !== 'idle' ? renderPaymentStatus() : (
-                        <div className='space-y-6'>
-                          <FormField
-                              control={form.control}
-                              name="couponCode"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Coupon Code (Optional)</FormLabel>
-                                  <div className="relative">
-                                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                    <FormControl>
-                                      <Input placeholder="e.g. SUMMER24" {...field} className="pl-10" />
-                                    </FormControl>
-                                  </div>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Tabs defaultValue="mpesa" className="w-full">
-                                <TabsList className="grid w-full grid-cols-1">
-                                    <TabsTrigger value="mpesa">Mobile Money</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="mpesa" className="pt-4 space-y-4">
-                                    <p className="text-sm text-muted-foreground">You will receive a push notification to your M-Pesa number to complete the payment.</p>
-                                    <FormField
-                                        control={form.control}
-                                        name="mpesaPhone"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>M-Pesa Phone Number</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g. 0712345678" {...field} />
-                                            </FormControl>
-                                            <FormDescription>The number to pay with. If blank, your contact number will be used.</FormDescription>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <Button onClick={() => handleSubmit('mpesa')} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                                        Pay KES {cartTotal.toFixed(2)} with M-Pesa
-                                    </Button>
-                                </TabsContent>
-                            </Tabs>
-                        </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-headline">2. Payment Method</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {paymentStatus !== 'idle' ? renderPaymentStatus() : (
+                  <div className='space-y-6'>
+                    <FormField
+                      control={form.control}
+                      name="couponCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Coupon Code (Optional)</FormLabel>
+                          <div className="relative">
+                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <FormControl>
+                              <Input placeholder="e.g. SUMMER24" {...field} className="pl-10" />
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                  </CardContent>
-              </Card>
+                    />
+                    <FormField
+                      control={form.control}
+                      name="termsAccepted"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-sm font-normal">
+                              I agree to the{' '}
+                              <Link href="/terms" target="_blank" className="underline hover:text-accent">
+                                Terms and Conditions
+                              </Link>
+                              {' '}and{' '}
+                              <Link href="/privacy" target="_blank" className="underline hover:text-accent">
+                                Privacy Policy
+                              </Link>
+                            </FormLabel>
+                            <FormMessage />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    <Tabs defaultValue="mpesa" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="mpesa">
+                          <Phone className="w-4 h-4 mr-2" />
+                          Mobile Money
+                        </TabsTrigger>
+                        <TabsTrigger value="card">
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Card
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="mpesa" className="pt-4 space-y-4">
+                        <div className="bg-gradient-to-br from-green-50 to-transparent dark:from-green-900/10 dark:to-transparent p-4 rounded-lg border border-green-100 dark:border-green-900/20">
+                          <div className="flex items-start">
+                            <div className="mr-3 mt-1">
+                              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                <Phone className="w-4 h-4 text-green-600 dark:text-green-400" />
+                              </div>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold mb-1 text-sm">M-Pesa Payment</h4>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                You will receive a push notification to your M-Pesa number to complete the payment.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="mpesaPhone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>M-Pesa Phone Number</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g. 0712345678" {...field} />
+                              </FormControl>
+                              <FormDescription>The number to pay with. If blank, your contact number will be used.</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button onClick={() => handleSubmit('mpesa')} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+                          Pay KES {cartTotal.toFixed(2)} with M-Pesa
+                        </Button>
+                      </TabsContent>
+                      <TabsContent value="card" className="pt-4 space-y-4">
+                        <div className="bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/10 dark:to-transparent p-4 rounded-lg border border-blue-100 dark:border-blue-900/20">
+                          <div className="flex items-start">
+                            <div className="mr-3 mt-1">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                <CreditCard className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                              </div>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold mb-1 text-sm">Card Payment</h4>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                You will be redirected to a secure payment page to complete your transaction.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>Your payment information is secure and encrypted</span>
+                        </div>
+                        <Button onClick={() => handleSubmit('card')} size="lg" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Pay KES {cartTotal.toFixed(2)} with Card
+                        </Button>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
           <div>
             <Card>

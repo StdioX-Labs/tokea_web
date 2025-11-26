@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { IssueComplementaryModal } from '@/components/issue-complementary-modal';
 
 interface EventData {
     id: number;
@@ -96,6 +97,45 @@ export default function EventDetailsPage() {
     const [userId, setUserId] = useState<number | null>(null);
     const [companyId, setCompanyId] = useState<number | null>(null);
     const [userDataLoaded, setUserDataLoaded] = useState(false);
+    const [isComplementaryModalOpen, setIsComplementaryModalOpen] = useState(false);
+
+    const fetchComplementary = async (retryCount = 0): Promise<void> => {
+        if (!eventId) return;
+
+        try {
+            const compsRes = await fetch(`/api/complementary-tickets?eventId=${eventId}`);
+
+            console.log('Fetching complementary tickets, Attempt:', retryCount + 1);
+
+            if (!compsRes.ok) {
+                throw new Error(`HTTP error! status: ${compsRes.status}`);
+            }
+
+            const compsData = await compsRes.json();
+
+            console.log('Complementary tickets response:', compsData);
+
+            if (compsData?.comps) {
+                setComplementary(compsData.comps);
+                setErrors(prev => ({ ...prev, complementary: null }));
+            } else {
+                setErrors(prev => ({ ...prev, complementary: 'No complementary tickets' }));
+            }
+        } catch (error) {
+            console.error('Error fetching complementary tickets:', error, 'Retry count:', retryCount);
+
+            if (retryCount < 5) {
+                const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+                console.log(`Retrying complementary tickets in ${delay}ms...`);
+                setTimeout(() => fetchComplementary(retryCount + 1), delay);
+            } else {
+                setErrors(prev => ({ ...prev, complementary: 'Failed to load complementary tickets after 5 attempts' }));
+                setLoadingStates(prev => ({ ...prev, complementary: false }));
+            }
+            return;
+        }
+        setLoadingStates(prev => ({ ...prev, complementary: false }));
+    };
 
     useEffect(() => {
         const adminUser = localStorage.getItem('adminUser');
@@ -275,42 +315,6 @@ export default function EventDetailsPage() {
             setLoadingStates(prev => ({ ...prev, transactions: false }));
         };
 
-        const fetchComplementary = async (retryCount = 0): Promise<void> => {
-            try {
-                const compsRes = await fetch(`/api/complementary-tickets?eventId=${eventId}`);
-
-                console.log('Fetching complementary tickets, Attempt:', retryCount + 1);
-
-                if (!compsRes.ok) {
-                    throw new Error(`HTTP error! status: ${compsRes.status}`);
-                }
-
-                const compsData = await compsRes.json();
-
-                console.log('Complementary tickets response:', compsData);
-
-                if (compsData?.comps) {
-                    setComplementary(compsData.comps);
-                    setErrors(prev => ({ ...prev, complementary: null }));
-                } else {
-                    setErrors(prev => ({ ...prev, complementary: 'No complementary tickets' }));
-                }
-            } catch (error) {
-                console.error('Error fetching complementary tickets:', error, 'Retry count:', retryCount);
-
-                if (retryCount < 5) {
-                    const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-                    console.log(`Retrying complementary tickets in ${delay}ms...`);
-                    setTimeout(() => fetchComplementary(retryCount + 1), delay);
-                } else {
-                    setErrors(prev => ({ ...prev, complementary: 'Failed to load complementary tickets after 5 attempts' }));
-                    setLoadingStates(prev => ({ ...prev, complementary: false }));
-                }
-                return;
-            }
-            setLoadingStates(prev => ({ ...prev, complementary: false }));
-        };
-
         fetchEventData();
         fetchTickets();
         fetchComplementary();
@@ -350,6 +354,18 @@ export default function EventDetailsPage() {
 
     return (
         <div className="container py-6 sm:py-8">
+            <IssueComplementaryModal
+                isOpen={isComplementaryModalOpen}
+                onOpenChange={setIsComplementaryModalOpen}
+                eventId={parseInt(eventId)}
+                availableTickets={tickets.map(t => ({
+                    id: t.id,
+                    ticketName: t.ticketName,
+                    ticketPrice: t.ticketPrice
+                }))}
+                onSuccess={fetchComplementary}
+            />
+
             {/* Header */}
             <div className="mb-6">
                 <Link href="/admin/dashboard">
@@ -558,10 +574,19 @@ export default function EventDetailsPage() {
             {/* Complementary Tickets */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Gift className="h-5 w-5" />
-                        Complementary Tickets Issued
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                            <Gift className="h-5 w-5" />
+                            Complementary Tickets Issued
+                        </CardTitle>
+                        <Button
+                            onClick={() => setIsComplementaryModalOpen(true)}
+                            disabled={tickets.length === 0}
+                        >
+                            <Gift className="h-4 w-4 mr-2" />
+                            Issue Complementary
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {loadingStates.complementary ? (
