@@ -574,7 +574,7 @@ export default function EventDetailsPage() {
             {/* Complementary Tickets */}
             <Card>
                 <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <CardTitle className="flex items-center gap-2">
                             <Gift className="h-5 w-5" />
                             Complementary Tickets Issued
@@ -582,6 +582,7 @@ export default function EventDetailsPage() {
                         <Button
                             onClick={() => setIsComplementaryModalOpen(true)}
                             disabled={tickets.length === 0}
+                            className="w-full sm:w-auto"
                         >
                             <Gift className="h-4 w-4 mr-2" />
                             Issue Complementary
