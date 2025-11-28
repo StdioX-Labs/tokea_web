@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, MapPin, Loader2, DollarSign, Ticket, TrendingUp, Gift, ArrowLeft } from "lucide-react";
+import { Calendar, MapPin, Loader2, DollarSign, Ticket, TrendingUp, Gift, ArrowLeft, PlusCircle, MoreHorizontal, Edit } from "lucide-react";
 import { useEffect, useState } from "react";
 import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
@@ -17,17 +17,30 @@ import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { IssueComplementaryModal } from '@/components/issue-complementary-modal';
+import { AddTicketModal } from '@/components/add-ticket-modal';
+import { AddEventModal } from '@/components/add-event-modal';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { TicketType, Event } from '@/lib/types';
 
 interface EventData {
     id: number;
     eventName: string;
+    eventDescription?: string;
     eventPosterUrl: string;
     eventLocation: string;
     eventStartDate: string;
+    eventEndDate?: string;
     isActive: boolean;
     companyId: number;
     category: string;
     currency: string;
+    ticketSaleStartDate?: string;
+    ticketSaleEndDate?: string;
 }
 
 interface TransactionBalances {
@@ -45,6 +58,11 @@ interface EventTicket {
     isActive: boolean;
     isSoldOut: boolean;
     ticketStatus: string;
+    ticketsToIssue?: number;
+    ticketLimitPerPerson?: number;
+    numberOfComplementary?: number;
+    ticketSaleStartDate?: string;
+    ticketSaleEndDate?: string;
 }
 
 interface GLTransaction {
@@ -98,6 +116,9 @@ export default function EventDetailsPage() {
     const [companyId, setCompanyId] = useState<number | null>(null);
     const [userDataLoaded, setUserDataLoaded] = useState(false);
     const [isComplementaryModalOpen, setIsComplementaryModalOpen] = useState(false);
+    const [isAddTicketModalOpen, setIsAddTicketModalOpen] = useState(false);
+    const [editingTicket, setEditingTicket] = useState<TicketType | null>(null);
+    const [isEditEventModalOpen, setIsEditEventModalOpen] = useState(false);
 
     const fetchComplementary = async (retryCount = 0): Promise<void> => {
         if (!eventId) return;
@@ -327,6 +348,75 @@ export default function EventDetailsPage() {
         }
     }, [userId, companyId]);
 
+    const handleAddTicket = () => {
+        setEditingTicket(null);
+        setIsAddTicketModalOpen(true);
+    };
+
+    const handleEditTicket = (ticket: EventTicket) => {
+        // Convert EventTicket to TicketType format
+        const ticketType: TicketType = {
+            id: String(ticket.id),
+            name: ticket.ticketName,
+            price: ticket.ticketPrice,
+            quantityAvailable: ticket.quantityAvailable,
+            ticketsToIssue: ticket.ticketsToIssue || 1,
+            ticketLimitPerPerson: ticket.ticketLimitPerPerson || 0,
+            numberOfComplementary: ticket.numberOfComplementary || 0,
+            saleStartDate: ticket.ticketSaleStartDate || new Date().toISOString(),
+            saleEndDate: ticket.ticketSaleEndDate || new Date().toISOString(),
+            status: ticket.isActive ? 'active' : 'disabled',
+        };
+        setEditingTicket(ticketType);
+        setIsAddTicketModalOpen(true);
+    };
+
+    const handleTicketModalSuccess = () => {
+        setIsAddTicketModalOpen(false);
+        setEditingTicket(null);
+        // Refetch tickets
+        const fetchTickets = async () => {
+            try {
+                const ticketsRes = await fetch(`/api/event-tickets?eventId=${eventId}`);
+                if (ticketsRes.ok) {
+                    const ticketsData = await ticketsRes.json();
+                    if (ticketsData?.ticket) {
+                        setTickets(ticketsData.ticket);
+                    }
+                }
+            } catch (error) {
+                console.error('Error refetching tickets:', error);
+            }
+        };
+        fetchTickets();
+    };
+
+    const handleEditEvent = () => {
+        setIsEditEventModalOpen(true);
+    };
+
+    const handleEditEventSuccess = async () => {
+        setIsEditEventModalOpen(false);
+        // Refetch event data without full page reload
+        try {
+            const eventRes = await fetch(`/api/user-events?userId=${userId}`);
+            const eventData = await eventRes.json();
+
+            if (eventData?.status && eventData?.events) {
+                const foundEvent = eventData.events.find((e: EventData) => {
+                    return e.id == eventId || e.id === parseInt(eventId) || String(e.id) === String(eventId);
+                });
+
+                if (foundEvent) {
+                    setEvent(foundEvent);
+                    console.log('Event updated successfully:', foundEvent);
+                }
+            }
+        } catch (error) {
+            console.error('Error refetching event:', error);
+        }
+    };
+
     if (loading) {
         return (
             <div className="container py-8 flex flex-col items-center justify-center min-h-[400px] gap-4">
@@ -366,14 +456,60 @@ export default function EventDetailsPage() {
                 onSuccess={fetchComplementary}
             />
 
+            <AddTicketModal
+                isOpen={isAddTicketModalOpen}
+                onOpenChange={setIsAddTicketModalOpen}
+                onSuccess={handleTicketModalSuccess}
+                ticket={editingTicket}
+                eventId={eventId}
+            />
+
+            <AddEventModal
+                isOpen={isEditEventModalOpen}
+                onOpenChange={setIsEditEventModalOpen}
+                onSuccess={handleEditEventSuccess}
+                event={event ? {
+                    id: String(event.id),
+                    slug: String(event.id),
+                    name: event.eventName,
+                    eventName: event.eventName,
+                    date: event.eventStartDate,
+                    eventStartDate: event.eventStartDate,
+                    endDate: event.eventEndDate,
+                    eventEndDate: event.eventEndDate,
+                    location: event.eventLocation,
+                    eventLocation: event.eventLocation,
+                    posterImage: event.eventPosterUrl,
+                    eventPosterUrl: event.eventPosterUrl,
+                    posterImageHint: '',
+                    description: event.eventDescription || '',
+                    eventDescription: event.eventDescription || '',
+                    artists: [],
+                    venue: { name: event.eventLocation, address: '', capacity: 0 },
+                    ticketTypes: [],
+                    isActive: event.isActive,
+                    category: { id: '1', name: event.category },
+                    promotions: [],
+                    ticketSaleStartDate: event.ticketSaleStartDate,
+                    ticketSaleEndDate: event.ticketSaleEndDate,
+                } as Event : null}
+                mode="edit"
+            />
+
             {/* Header */}
             <div className="mb-6">
-                <Link href="/admin/dashboard">
-                    <Button variant="ghost" size="sm" className="mb-4">
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back to Events
+                <div className="flex items-center justify-between mb-4">
+                    <Link href="/admin/dashboard">
+                        <Button variant="ghost" size="sm">
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back to Events
+                        </Button>
+                    </Link>
+                    <Button onClick={handleEditEvent} variant="outline" size="sm">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Event
                     </Button>
-                </Link>
+                </div>
                 <div className="flex flex-col md:flex-row gap-6">
                     <img
                         src={event.eventPosterUrl}
@@ -474,7 +610,13 @@ export default function EventDetailsPage() {
             {/* Tickets Available */}
             <Card className="mb-6">
                 <CardHeader>
-                    <CardTitle>Tickets Available</CardTitle>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <CardTitle>Tickets Available</CardTitle>
+                        <Button onClick={handleAddTicket} className="w-full sm:w-auto">
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add Ticket
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {loadingStates.tickets ? (
@@ -495,6 +637,7 @@ export default function EventDetailsPage() {
                                         <TableHead>Price</TableHead>
                                         <TableHead>Available</TableHead>
                                         <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -507,6 +650,20 @@ export default function EventDetailsPage() {
                                                 <Badge variant={ticket.isActive ? "default" : "secondary"}>
                                                     {ticket.ticketStatus}
                                                 </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => handleEditTicket(ticket)}>
+                                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </TableCell>
                                         </TableRow>
                                     ))}

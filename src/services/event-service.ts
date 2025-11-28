@@ -10,6 +10,7 @@ interface ApiTicketType {
   quantityAvailable: number;
   ticketsToIssue: number;
   ticketLimitPerPerson: number;
+  numberOfComplementary?: number;
   ticketSaleStartDate: string;
   ticketSaleEndDate: string;
   isActive: boolean;
@@ -38,6 +39,7 @@ interface ApiAdminTicketType {
   isActive: boolean;
   ticketsToIssue: number;
   ticketLimitPerPerson: number;
+  numberOfComplementary?: number;
   ticketSaleStartDate: string;
   ticketSaleEndDate: string;
 }
@@ -77,18 +79,28 @@ export interface PurchasePayload {
 }
 
 export interface CreateEventPayload {
-    eventName: string;
-    eventDescription: string;
-    eventPosterUrl: string;
-    eventCategory: { id: number };
-    eventLocation: string;
-    eventStartDate: string;
-    eventEndDate?: string;
-    users: { id: number };
-    company: { id: number };
+  eventName: string;
+  eventDescription: string;
+  eventPosterUrl: string;
+  eventCategory: { id: number };
+  eventLocation: string;
+  eventStartDate: string;
+  eventEndDate?: string;
+  users: { id: number };
+  company: { id: number };
 }
 
-export interface UpdateEventPayload extends Omit<CreateEventPayload, 'users' | 'company'> {}
+export interface UpdateEventPayload {
+  eventName: string;
+  eventDescription: string;
+  eventPosterUrl: string;
+  eventCategory?: { id: number };
+  eventLocation: string;
+  eventStartDate: string;
+  eventEndDate?: string;
+  ticketSaleStartDate?: string;
+  ticketSaleEndDate?: string;
+}
 
 export interface CreateTicketPayload {
   event: { id: number };
@@ -103,26 +115,34 @@ export interface CreateTicketPayload {
   isFree: boolean;
 }
 
-export interface UpdateTicketPayload extends Omit<CreateTicketPayload, 'event'> {}
+export interface UpdateTicketPayload {
+  ticketName: string;
+  quantityAvailable: number;
+  ticketsToIssue: number;
+  ticketLimitPerPerson: number;
+  numberOfComplementary: number;
+  ticketSaleStartDate: string;
+  ticketSaleEndDate: string;
+}
 
 interface ApiTicketInGroup {
-    id: number;
-    ticketName: string;
-    ticketPrice: number;
-    barcode: string | null;
-    ticketGroupCode: string;
-    customerMobile: string;
-    isComplementary: boolean;
-    status: 'PENDING_PAYMENT' | 'VALID' | string;
-    createdAt: string;
+  id: number;
+  ticketName: string;
+  ticketPrice: number;
+  barcode: string | null;
+  ticketGroupCode: string;
+  customerMobile: string;
+  isComplementary: boolean;
+  status: 'PENDING_PAYMENT' | 'VALID' | string;
+  createdAt: string;
 }
 
 interface ApiTicketGroupStatusResponse {
-    tickets: ApiTicketInGroup[];
-    posterUrl: string;
-    ticketPrice: number;
-    event: string;
-    status: boolean;
+  tickets: ApiTicketInGroup[];
+  posterUrl: string;
+  ticketPrice: number;
+  event: string;
+  status: boolean;
 }
 
 interface ApiNewTicketType {
@@ -162,17 +182,17 @@ interface ApiNewEventResponse {
 }
 
 function transformApiTicketInGroup(apiTicket: ApiTicketInGroup): PurchasedTicket {
-    return {
-        id: apiTicket.id,
-        ticketName: apiTicket.ticketName,
-        ticketPrice: apiTicket.ticketPrice,
-        barcode: apiTicket.barcode,
-        ticketGroupCode: apiTicket.ticketGroupCode,
-        customerMobile: apiTicket.customerMobile,
-        isComplementary: apiTicket.isComplementary,
-        status: apiTicket.status,
-        createdAt: apiTicket.createdAt,
-    };
+  return {
+    id: apiTicket.id,
+    ticketName: apiTicket.ticketName,
+    ticketPrice: apiTicket.ticketPrice,
+    barcode: apiTicket.barcode,
+    ticketGroupCode: apiTicket.ticketGroupCode,
+    customerMobile: apiTicket.customerMobile,
+    isComplementary: apiTicket.isComplementary,
+    status: apiTicket.status,
+    createdAt: apiTicket.createdAt,
+  };
 }
 
 function transformApiTicketTypeToTicketType(apiTicket: ApiTicketType): TicketType {
@@ -183,6 +203,7 @@ function transformApiTicketTypeToTicketType(apiTicket: ApiTicketType): TicketTyp
     quantityAvailable: apiTicket.quantityAvailable,
     ticketsToIssue: apiTicket.ticketsToIssue,
     ticketLimitPerPerson: apiTicket.ticketLimitPerPerson,
+    numberOfComplementary: apiTicket.numberOfComplementary,
     saleStartDate: apiTicket.ticketSaleStartDate,
     saleEndDate: apiTicket.ticketSaleEndDate,
     status: apiTicket.isActive ? 'active' : 'disabled',
@@ -197,6 +218,7 @@ function transformApiAdminTicketToTicketType(apiTicket: ApiAdminTicketType): Tic
     quantityAvailable: apiTicket.quantityAvailable,
     ticketsToIssue: apiTicket.ticketsToIssue,
     ticketLimitPerPerson: apiTicket.ticketLimitPerPerson,
+    numberOfComplementary: apiTicket.numberOfComplementary,
     saleStartDate: apiTicket.ticketSaleStartDate,
     saleEndDate: apiTicket.ticketSaleEndDate,
     status: apiTicket.isActive ? 'active' : 'disabled',
@@ -505,7 +527,7 @@ export async function purchaseTickets(payload: PurchasePayload): Promise<{ ticke
         message: response.message || 'Payment processing initiated',
         status: response.status !== false, // Only treat explicit false as false
         checkoutUrl: response.checkoutUrl || response.checkout_url ||
-                    (response.data && (response.data.checkoutUrl || response.data.checkout_url)) || undefined,
+          (response.data && (response.data.checkoutUrl || response.data.checkout_url)) || undefined,
       };
     }
 
@@ -518,98 +540,101 @@ export async function purchaseTickets(payload: PurchasePayload): Promise<{ ticke
 }
 
 export async function checkPaymentStatus(ticketGroup: string): Promise<{
-    tickets: PurchasedTicket[];
-    posterUrl: string;
-    total: number;
-    eventName: string;
+  tickets: PurchasedTicket[];
+  posterUrl: string;
+  total: number;
+  eventName: string;
 } | null> {
-    try {
-        const response = await apiClient<ApiTicketGroupStatusResponse>(`/event/ticket/group/get?ticketGroup=${ticketGroup}`);
-        if (!response || !response.tickets || response.tickets.length === 0) {
-            return null;
-        }
-
-        const isPaid = response.tickets.some(t => t.status === 'VALID');
-        if (!isPaid) {
-            return null;
-        }
-
-        return {
-            tickets: response.tickets.map(transformApiTicketInGroup),
-            posterUrl: response.posterUrl,
-            total: response.ticketPrice,
-            eventName: response.event,
-        };
-    } catch (error) {
-        console.log(`Polling for ${ticketGroup}: Not found or error. Continuing.`);
-        return null;
+  try {
+    const response = await apiClient<ApiTicketGroupStatusResponse>(`/event/ticket/group/get?ticketGroup=${ticketGroup}`);
+    if (!response || !response.tickets || response.tickets.length === 0) {
+      return null;
     }
+
+    const isPaid = response.tickets.some(t => t.status === 'VALID');
+    if (!isPaid) {
+      return null;
+    }
+
+    return {
+      tickets: response.tickets.map(transformApiTicketInGroup),
+      posterUrl: response.posterUrl,
+      total: response.ticketPrice,
+      eventName: response.event,
+    };
+  } catch (error) {
+    console.log(`Polling for ${ticketGroup}: Not found or error. Continuing.`);
+    return null;
+  }
 }
 
 export async function getPublicOrderDetails(orderId: string): Promise<Order | null> {
-    try {
-        const response = await apiClient<ApiTicketGroupStatusResponse>(`/event/ticket/group/get?ticketGroup=${orderId}`);
+  try {
+    const response = await apiClient<ApiTicketGroupStatusResponse>(`/event/ticket/group/get?ticketGroup=${orderId}`);
 
-        if (!response || !response.tickets || response.tickets.length === 0) {
-            return null;
-        }
-
-        const firstTicket = response.tickets[0];
-
-        const order: Order = {
-            id: firstTicket.ticketGroupCode,
-            eventName: response.event,
-            posterUrl: response.posterUrl,
-            total: response.ticketPrice,
-            tickets: response.tickets.map(transformApiTicketInGroup),
-            orderDate: firstTicket.createdAt,
-        };
-        return order;
-
-    } catch (error) {
-        console.error(`Failed to fetch public order details for ${orderId}:`, error);
-        return null;
+    if (!response || !response.tickets || response.tickets.length === 0) {
+      return null;
     }
+
+    const firstTicket = response.tickets[0];
+
+    const order: Order = {
+      id: firstTicket.ticketGroupCode,
+      eventName: response.event,
+      posterUrl: response.posterUrl,
+      total: response.ticketPrice,
+      tickets: response.tickets.map(transformApiTicketInGroup),
+      orderDate: firstTicket.createdAt,
+    };
+    return order;
+
+  } catch (error) {
+    console.error(`Failed to fetch public order details for ${orderId}:`, error);
+    return null;
+  }
 }
 
 export async function createEvent(payload: CreateEventPayload): Promise<any> {
-    return apiClient('/event/create', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-    });
+  return apiClient('/event/create', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
-export async function updateEvent(eventId: string, payload: any): Promise<any> {
-    return apiClient(`/event/update?eventId=${eventId}`, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-    });
+export async function updateEvent(eventId: string, payload: UpdateEventPayload): Promise<any> {
+  console.log('Updating event:', eventId, 'with payload:', payload);
+  const response = await apiClient(`/event/update?eventId=${eventId}`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  console.log('Update event response:', response);
+  return response;
 }
 
 export async function activateEvent(eventId: string): Promise<any> {
-    return apiClient('/event/activate', {
-        method: 'POST',
-        body: JSON.stringify({ eventIds: [parseInt(eventId)] }),
-    });
+  return apiClient('/event/activate', {
+    method: 'POST',
+    body: JSON.stringify({ eventIds: [parseInt(eventId)] }),
+  });
 }
 
 export async function getEventTickets(eventId: string): Promise<TicketType[]> {
-    const response = await apiClient<{ ticket: ApiAdminTicketType[] }>(`/event/ticket/get?eventId=${eventId}`);
-    return response.ticket.map(transformApiAdminTicketToTicketType);
+  const response = await apiClient<{ ticket: ApiAdminTicketType[] }>(`/event/ticket/get?eventId=${eventId}`);
+  return response.ticket.map(transformApiAdminTicketToTicketType);
 }
 
 export async function createTicket(payload: CreateTicketPayload): Promise<any> {
-    return apiClient('/event/ticket/create', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-    });
+  return apiClient('/event/ticket/create', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function updateTicket(ticketId: string, payload: UpdateTicketPayload): Promise<any> {
-    return apiClient(`/ticket/update?ticketId=${ticketId}`, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-    });
+  return apiClient(`/ticket/update?ticketId=${ticketId}`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
 export interface UpdateTicketStatusPayload {

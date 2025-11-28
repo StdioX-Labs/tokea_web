@@ -18,13 +18,14 @@ export interface TicketType {
   quantityAvailable: number;
   ticketsToIssue: number;
   ticketLimitPerPerson: number;
+  numberOfComplementary?: number;
   saleStartDate: string;
   saleEndDate: string;
   status: 'active' | 'disabled';
 }
 
 export interface EventCategory {
-  id:string;
+  id: string;
   name: string;
 }
 
@@ -57,6 +58,17 @@ export interface Event {
   isActive: boolean;
   category?: EventCategory;
   promotions?: Promotion[];
+  // Additional fields for editing
+  eventName?: string;
+  eventDescription?: string;
+  eventPosterUrl?: string;
+  eventLocation?: string;
+  eventStartDate?: string;
+  eventEndDate?: string;
+  ticketSaleStartDate?: string;
+  ticketSaleEndDate?: string;
+  time?: string;
+  endTime?: string;
 }
 
 export interface CartItem {

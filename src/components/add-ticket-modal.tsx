@@ -76,9 +76,7 @@ export function AddTicketModal({ isOpen, onOpenChange, onSuccess, ticket, eventI
           quantityAvailable: ticket.quantityAvailable,
           ticketsToIssue: ticket.ticketsToIssue,
           ticketLimitPerPerson: ticket.ticketLimitPerPerson,
-          // Since numberOfComplementary is not part of TicketType, we can't pre-fill it for edit.
-          // Defaulting to 0, or you can add it to your TicketType interface.
-          numberOfComplementary: 0, 
+          numberOfComplementary: ticket.numberOfComplementary || 0,
           saleStartDate: new Date(ticket.saleStartDate),
           saleEndDate: new Date(ticket.saleEndDate),
         });
@@ -99,45 +97,50 @@ export function AddTicketModal({ isOpen, onOpenChange, onSuccess, ticket, eventI
 
   async function onSubmit(values: z.infer<typeof ticketFormSchema>) {
     setIsSubmitting(true);
-    
-    const commonPayload = {
-        ticketName: values.name,
-        ticketPrice: values.price,
-        quantityAvailable: values.quantityAvailable,
-        ticketsToIssue: values.ticketsToIssue,
-        ticketLimitPerPerson: values.ticketLimitPerPerson,
-        numberOfComplementary: values.numberOfComplementary,
-        ticketSaleStartDate: values.saleStartDate.toISOString(),
-        ticketSaleEndDate: values.saleEndDate.toISOString(),
-        isFree: values.price === 0,
-    }
 
     try {
       if (mode === 'add' && eventId) {
         const payload: CreateTicketPayload = {
-            ...commonPayload,
-            event: { id: parseInt(eventId) },
+          event: { id: parseInt(eventId) },
+          ticketName: values.name,
+          ticketPrice: values.price,
+          quantityAvailable: values.quantityAvailable,
+          ticketsToIssue: values.ticketsToIssue,
+          ticketLimitPerPerson: values.ticketLimitPerPerson,
+          numberOfComplementary: values.numberOfComplementary,
+          ticketSaleStartDate: values.saleStartDate.toISOString(),
+          ticketSaleEndDate: values.saleEndDate.toISOString(),
+          isFree: values.price === 0,
         };
         await createTicket(payload);
         toast({ title: "Success", description: "Ticket created successfully." });
       } else if (mode === 'edit' && ticket) {
-        const payload: UpdateTicketPayload = commonPayload;
+        // Send editable fields for update
+        const payload: UpdateTicketPayload = {
+          ticketName: values.name,
+          quantityAvailable: values.quantityAvailable,
+          ticketsToIssue: values.ticketsToIssue,
+          ticketLimitPerPerson: values.ticketLimitPerPerson,
+          numberOfComplementary: values.numberOfComplementary,
+          ticketSaleStartDate: values.saleStartDate.toISOString(),
+          ticketSaleEndDate: values.saleEndDate.toISOString(),
+        };
         await updateTicket(ticket.id, payload);
         toast({ title: "Success", description: "Ticket updated successfully." });
       }
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-       console.error(`Failed to ${mode} ticket:`, error);
-       toast({ variant: 'destructive', title: "Error", description: `Failed to ${mode} ticket.` });
+      console.error(`Failed to ${mode} ticket:`, error);
+      toast({ variant: 'destructive', title: "Error", description: `Failed to ${mode} ticket.` });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline">
             {ticket ? 'Edit Ticket' : 'Add New Ticket'}
@@ -169,8 +172,9 @@ export function AddTicketModal({ isOpen, onOpenChange, onSuccess, ticket, eventI
                   <FormItem>
                     <FormLabel>Price</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="0.00" {...field} disabled={isSubmitting} />
+                      <Input type="number" placeholder="0.00" {...field} disabled={isSubmitting || mode === 'edit'} />
                     </FormControl>
+                    {mode === 'edit' && <FormDescription className="text-xs">Price cannot be edited</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -181,95 +185,95 @@ export function AddTicketModal({ isOpen, onOpenChange, onSuccess, ticket, eventI
             <h3 className="font-semibold text-foreground">Inventory & Limits</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <FormField
-                    control={form.control}
-                    name="quantityAvailable"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Quantity Available</FormLabel>
-                        <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="ticketsToIssue"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Tickets per sale</FormLabel>
-                        <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
-                        <FormDescription className="text-xs">e.g. 2 for a couple's ticket.</FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="ticketLimitPerPerson"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Limit per person</FormLabel>
-                        <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
-                        <FormDescription className="text-xs">0 for unlimited.</FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="numberOfComplementary"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Complementary</FormLabel>
-                        <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
-                        <FormDescription className="text-xs">Number of free tickets.</FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+              <FormField
+                control={form.control}
+                name="quantityAvailable"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantity Available</FormLabel>
+                    <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="ticketsToIssue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tickets per sale</FormLabel>
+                    <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
+                    <FormDescription className="text-xs">e.g. 2 for a couple's ticket.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="ticketLimitPerPerson"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Limit per person</FormLabel>
+                    <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
+                    <FormDescription className="text-xs">0 for unlimited.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="numberOfComplementary"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Complementary</FormLabel>
+                    <FormControl><Input type="number" {...field} disabled={isSubmitting} /></FormControl>
+                    <FormDescription className="text-xs">Number of free tickets.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <Separator />
             <h3 className="font-semibold text-foreground">Sale Period</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                    control={form.control}
-                    name="saleStartDate"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Sale Starts</FormLabel>
-                        <FormControl>
-                        <DatePicker
-                            date={field.value}
-                            setDate={field.onChange}
-                            className="w-full"
-                             disabled={isSubmitting}
-                        />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="saleEndDate"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Sale Ends</FormLabel>
-                        <FormControl>
-                        <DatePicker
-                            date={field.value}
-                            setDate={field.onChange}
-                            className="w-full"
-                             disabled={isSubmitting}
-                        />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+              <FormField
+                control={form.control}
+                name="saleStartDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sale Starts</FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        date={field.value}
+                        setDate={field.onChange}
+                        className="w-full"
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="saleEndDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sale Ends</FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        date={field.value}
+                        setDate={field.onChange}
+                        className="w-full"
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <DialogFooter className="pt-4">
