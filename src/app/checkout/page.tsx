@@ -32,7 +32,7 @@ const checkoutSchema = z.object({
 });
 
 type PaymentStatus = 'idle' | 'processing' | 'awaitingVerification' | 'success' | 'error';
-type PaymentMethod = 'mpesa' | 'card';
+type PaymentMethod = 'vaspro' | 'card';
 
 const formatPhoneNumberForApi = (phone: string | undefined): string => {
   if (!phone) return '';
@@ -56,7 +56,7 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('vaspro');
   const [progress, setProgress] = useState(0);
   const [ticketGroup, setTicketGroup] = useState<string | null>(null);
 
@@ -150,7 +150,7 @@ export default function CheckoutPage() {
     if (items.length === 0) return;
 
     const firstItem = items[0];
-    const rawPaymentPhoneNumber = channel === 'mpesa' && values.mpesaPhone ? values.mpesaPhone : values.phone;
+    const rawPaymentPhoneNumber = channel === 'vaspro' && values.mpesaPhone ? values.mpesaPhone : values.phone;
     const paymentPhoneNumber = formatPhoneNumberForApi(rawPaymentPhoneNumber);
 
     try {
@@ -177,7 +177,7 @@ export default function CheckoutPage() {
         eventId: Number(firstItem.eventId),
         amountDisplayed: cartTotal,
         coupon_code: values.couponCode || "",
-        channel: channel === 'card' ? 'card' : 'mpesa',
+        channel: channel === 'card' ? 'card' : 'vaspro',
         customer: {
           email: values.email,
           mobile_number: paymentPhoneNumber,
@@ -374,21 +374,22 @@ export default function CheckoutPage() {
                       control={form.control}
                       name="termsAccepted"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border-2 border-primary/20 bg-primary/5 p-4 hover:border-primary/40 transition-colors">
                           <FormControl>
                             <Checkbox
                               checked={field.value}
                               onCheckedChange={field.onChange}
+                              className="mt-1 h-5 w-5"
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel className="text-sm font-normal">
+                            <FormLabel className="text-sm font-medium cursor-pointer">
                               I agree to the{' '}
-                              <Link href="/terms" target="_blank" className="underline hover:text-accent">
+                              <Link href="/terms" target="_blank" className="underline font-semibold hover:text-accent">
                                 Terms and Conditions
                               </Link>
                               {' '}and{' '}
-                              <Link href="/privacy" target="_blank" className="underline hover:text-accent">
+                              <Link href="/privacy" target="_blank" className="underline font-semibold hover:text-accent">
                                 Privacy Policy
                               </Link>
                             </FormLabel>
@@ -397,9 +398,9 @@ export default function CheckoutPage() {
                         </FormItem>
                       )}
                     />
-                    <Tabs defaultValue="mpesa" className="w-full">
+                    <Tabs defaultValue="vaspro" className="w-full">
                       <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="mpesa">
+                        <TabsTrigger value="vaspro">
                           <Phone className="w-4 h-4 mr-2" />
                           Mobile Money
                         </TabsTrigger>
@@ -408,7 +409,7 @@ export default function CheckoutPage() {
                           Card
                         </TabsTrigger>
                       </TabsList>
-                      <TabsContent value="mpesa" className="pt-4 space-y-4">
+                      <TabsContent value="vaspro" className="pt-4 space-y-4">
                         <div className="bg-gradient-to-br from-green-50 to-transparent dark:from-green-900/10 dark:to-transparent p-4 rounded-lg border border-green-100 dark:border-green-900/20">
                           <div className="flex items-start">
                             <div className="mr-3 mt-1">
@@ -438,7 +439,7 @@ export default function CheckoutPage() {
                             </FormItem>
                           )}
                         />
-                        <Button onClick={() => handleSubmit('mpesa')} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+                        <Button onClick={() => handleSubmit('vaspro')} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
                           Pay KES {cartTotal.toFixed(2)} with M-Pesa
                         </Button>
                       </TabsContent>

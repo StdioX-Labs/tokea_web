@@ -73,7 +73,7 @@ export interface PurchasePayload {
   eventId: number;
   amountDisplayed: number;
   coupon_code?: string;
-  channel: 'card' | 'mpesa';
+  channel: 'card' | 'vaspro';
   customer: PurchaseCustomer;
   tickets: PurchaseTicket[];
 }
