@@ -181,6 +181,16 @@ interface ApiNewEventResponse {
   status: boolean;
 }
 
+// Helper function to check if a ticket is valid (active and not expired)
+function isTicketValid(isActive: boolean, saleEndDate: string): boolean {
+  if (!isActive) return false;
+
+  const endDate = new Date(saleEndDate);
+  const now = new Date();
+
+  return endDate >= now;
+}
+
 function transformApiTicketInGroup(apiTicket: ApiTicketInGroup): PurchasedTicket {
   return {
     id: apiTicket.id,
@@ -242,6 +252,11 @@ function transformApiNewTicketToTicketType(apiTicket: ApiNewTicketType): TicketT
 function transformApiEventToEvent(apiEvent: ApiEvent): Event {
   const posterHint = apiEvent.category?.toLowerCase().replace(/&/g, '').split(/\s+/).slice(0, 2).join(' ') || 'event poster';
 
+  // Filter out inactive tickets and tickets with past end dates
+  const validTickets = apiEvent.tickets?.filter(ticket =>
+    isTicketValid(ticket.isActive, ticket.ticketSaleEndDate)
+  ) || [];
+
   return {
     id: String(apiEvent.id),
     slug: apiEvent.slug,
@@ -260,7 +275,7 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
       address: '',
       capacity: 0,
     },
-    ticketTypes: apiEvent.tickets?.map(transformApiTicketTypeToTicketType) || [],
+    ticketTypes: validTickets.map(transformApiTicketTypeToTicketType),
     promotions: [],
   };
 }
@@ -268,6 +283,11 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
 function transformApiAdminEventToEvent(apiEvent: ApiAdminEvent): Event {
   const posterHint = apiEvent.category?.toLowerCase().replace(/&/g, '').split(/\s+/).slice(0, 2).join(' ') || 'event poster';
 
+  // Filter out inactive tickets and tickets with past end dates
+  const validTickets = apiEvent.tickets?.filter(ticket =>
+    isTicketValid(ticket.isActive, ticket.ticketSaleEndDate)
+  ) || [];
+
   return {
     id: String(apiEvent.id),
     slug: apiEvent.slug,
@@ -286,12 +306,17 @@ function transformApiAdminEventToEvent(apiEvent: ApiAdminEvent): Event {
       address: '',
       capacity: 0,
     },
-    ticketTypes: apiEvent.tickets?.map(transformApiAdminTicketToTicketType) || [],
+    ticketTypes: validTickets.map(transformApiAdminTicketToTicketType),
     promotions: [],
   };
 }
 
 function transformApiNewEventToEvent(apiEvent: ApiNewEvent): Event {
+  // Filter out inactive tickets and tickets with past end dates
+  const validTickets = apiEvent.tickets?.filter(ticket =>
+    isTicketValid(ticket.isActive, ticket.ticketSaleEndDate)
+  ) || [];
+
   return {
     id: String(apiEvent.eventId),
     slug: String(apiEvent.eventId), // Use event ID as slug since it's not provided in the API
@@ -310,7 +335,7 @@ function transformApiNewEventToEvent(apiEvent: ApiNewEvent): Event {
       address: '',
       capacity: 0,
     },
-    ticketTypes: apiEvent.tickets?.map(transformApiNewTicketToTicketType) || [],
+    ticketTypes: validTickets.map(transformApiNewTicketToTicketType),
     promotions: [],
   };
 }
@@ -363,6 +388,11 @@ interface ApiUserEventsResponse {
 }
 
 function transformApiUserEventToEvent(apiEvent: ApiUserEvent): Event {
+  // Filter out inactive tickets and tickets with past end dates
+  const validTickets = apiEvent.tickets?.filter(ticket =>
+    isTicketValid(ticket.isActive, ticket.ticketSaleEndDate)
+  ) || [];
+
   return {
     id: String(apiEvent.id),
     slug: apiEvent.slug || String(apiEvent.id),
@@ -381,7 +411,7 @@ function transformApiUserEventToEvent(apiEvent: ApiUserEvent): Event {
       address: '',
       capacity: 0,
     },
-    ticketTypes: apiEvent.tickets?.map(ticket => ({
+    ticketTypes: validTickets.map(ticket => ({
       id: String(ticket.id),
       name: ticket.ticketName,
       price: ticket.ticketPrice || 0,
@@ -391,7 +421,7 @@ function transformApiUserEventToEvent(apiEvent: ApiUserEvent): Event {
       saleStartDate: ticket.ticketSaleStartDate,
       saleEndDate: ticket.ticketSaleEndDate,
       status: ticket.isActive ? 'active' : 'disabled',
-    })) || [],
+    })),
     promotions: [],
   };
 }
