@@ -374,22 +374,22 @@ export default function CheckoutPage() {
                       control={form.control}
                       name="termsAccepted"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border-2 border-primary/20 bg-primary/5 p-4 hover:border-primary/40 transition-colors">
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border-2 border-red-300 bg-red-50 p-4 hover:border-red-400 transition-colors">
                           <FormControl>
                             <Checkbox
                               checked={field.value}
                               onCheckedChange={field.onChange}
-                              className="mt-1 h-5 w-5"
+                              className="mt-1 h-5 w-5 border-red-500 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel className="text-sm font-medium cursor-pointer">
+                            <FormLabel className="text-sm font-medium cursor-pointer text-red-900">
                               I agree to the{' '}
-                              <Link href="/terms" target="_blank" className="underline font-semibold hover:text-accent">
+                              <Link href="/terms" target="_blank" className="underline font-semibold hover:text-red-700">
                                 Terms and Conditions
                               </Link>
                               {' '}and{' '}
-                              <Link href="/privacy" target="_blank" className="underline font-semibold hover:text-accent">
+                              <Link href="/privacy" target="_blank" className="underline font-semibold hover:text-red-700">
                                 Privacy Policy
                               </Link>
                             </FormLabel>
