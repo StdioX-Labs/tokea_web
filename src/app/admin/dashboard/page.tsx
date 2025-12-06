@@ -112,7 +112,7 @@ export default function DashboardPage() {
 
             {isSuperAdmin && (
                 <div className="mb-8">
-                    <SuperAdminUserManagement />
+                    <SuperAdminUserManagement currentUserId={userId || undefined} />
                 </div>
             )}
 

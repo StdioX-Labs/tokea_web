@@ -274,7 +274,7 @@ const COUNTRIES = [
     { code: "263", name: "Zimbabwe", flag: "🇿🇼" },
 ];
 
-export function SuperAdminUserManagement() {
+export function SuperAdminUserManagement({ currentUserId }: { currentUserId?: number }) {
     const [fullName, setFullName] = useState('');
     const [emailAddress, setEmailAddress] = useState('');
     const [mobileNumber, setMobileNumber] = useState('');
@@ -294,6 +294,7 @@ export function SuperAdminUserManagement() {
         userId: number;
         role: string;
     } | null>(null);
+    const [attachMode, setAttachMode] = useState<'create' | 'self'>('create');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -411,11 +412,14 @@ export function SuperAdminUserManagement() {
 
     const handleMapUserToEvent = async (eventId?: string) => {
         const targetEventId = eventId || selectedEventId;
+        const targetUserId = attachMode === 'self' ? currentUserId : createdUserId;
 
-        if (!createdUserId || !targetEventId) {
+        if (!targetUserId || !targetEventId) {
             toast({
                 title: "Validation Error",
-                description: "Please create a user and select an event first",
+                description: attachMode === 'self'
+                    ? "Please select an event"
+                    : "Please create a user and select an event first",
                 variant: "destructive",
             });
             return;
@@ -430,11 +434,9 @@ export function SuperAdminUserManagement() {
                 },
                 body: JSON.stringify({
                     eventId: parseInt(targetEventId),
-                    userId: createdUserId,
+                    userId: targetUserId,
                 }),
-            });
-
-            if (!response.ok) {
+            }); if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to map user to event');
             }
@@ -443,13 +445,18 @@ export function SuperAdminUserManagement() {
 
             toast({
                 title: "Success",
-                description: `User successfully attached to event!`,
+                description: attachMode === 'self'
+                    ? `You have been successfully attached to the event!`
+                    : `User successfully attached to event!`,
             });
 
             // Reset state
-            setCreatedUserId(null);
-            setCreatedUserDetails(null);
+            if (attachMode === 'create') {
+                setCreatedUserId(null);
+                setCreatedUserDetails(null);
+            }
             setSelectedEventId('');
+            setAttachMode('create');
         } catch (error) {
             console.error('Error mapping user to event:', error);
             toast({
@@ -467,15 +474,55 @@ export function SuperAdminUserManagement() {
             <CardHeader className="space-y-2 px-4 sm:px-6">
                 <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                     <UserPlus className="h-5 w-5 sm:h-6 sm:w-6" />
-                    Add New User & Attach to Event
+                    {attachMode === 'self' ? 'Attach Yourself to Event' : 'Add New User & Attach to Event'}
                 </CardTitle>
                 <CardDescription className="text-sm">
-                    Create a new event organizer and attach them to an event
+                    {attachMode === 'self'
+                        ? 'Select an event to attach yourself as an organizer'
+                        : 'Create a new event organizer and attach them to an event'
+                    }
                 </CardDescription>
+                {currentUserId && (
+                    <div className="flex gap-2 pt-2">
+                        <Button
+                            variant={attachMode === 'create' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                                setAttachMode('create');
+                                setSelectedEventId('');
+                            }}
+                            className="text-xs sm:text-sm"
+                        >
+                            Create New User
+                        </Button>
+                        <Button
+                            variant={attachMode === 'self' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                                setAttachMode('self');
+                                setCreatedUserId(null);
+                                setCreatedUserDetails(null);
+                                setSelectedEventId('');
+                                fetchEvents();
+                            }}
+                            disabled={loadingEvents}
+                            className="text-xs sm:text-sm"
+                        >
+                            {loadingEvents && attachMode === 'self' ? (
+                                <>
+                                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                    Loading...
+                                </>
+                            ) : (
+                                'Attach Myself'
+                            )}
+                        </Button>
+                    </div>
+                )}
             </CardHeader>
             <CardContent className="space-y-6 px-4 sm:px-6 pb-6">
                 {/* User Creation Form */}
-                {!createdUserId && (
+                {attachMode === 'create' && !createdUserId && (
                     <form onSubmit={handleCreateUser} className="space-y-4">
                         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
                             <div className="space-y-2">
@@ -568,21 +615,25 @@ export function SuperAdminUserManagement() {
                 )}
 
                 {/* Event Selection Section */}
-                {createdUserId && createdUserDetails && (
+                {((attachMode === 'create' && createdUserId && createdUserDetails) || attachMode === 'self') && (
                     <div className="space-y-4">
-                        {/* User Details Banner */}
-                        <div className="rounded-lg border bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900 p-3 sm:p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                <h3 className="font-semibold text-green-900 dark:text-green-100 text-sm sm:text-base">User Created Successfully</h3>
+                        {/* User Details Banner - Only show in create mode */}
+                        {attachMode === 'create' && createdUserDetails && (
+                            <div className="rounded-lg border bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900 p-3 sm:p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                    <h3 className="font-semibold text-green-900 dark:text-green-100 text-sm sm:text-base">User Created Successfully</h3>
+                                </div>
+                                <p className="text-xs sm:text-sm text-green-700 dark:text-green-300 break-all">
+                                    {createdUserDetails.email}
+                                </p>
                             </div>
-                            <p className="text-xs sm:text-sm text-green-700 dark:text-green-300 break-all">
-                                {createdUserDetails.email}
-                            </p>
-                        </div>
+                        )}
 
-                        <div className="border-t pt-4 sm:pt-6">
-                            <h3 className="font-semibold mb-3 sm:mb-4 text-base sm:text-lg">Select Event to Attach User</h3>
+                        <div className={attachMode === 'create' ? "border-t pt-4 sm:pt-6" : ""}>
+                            <h3 className="font-semibold mb-3 sm:mb-4 text-base sm:text-lg">
+                                {attachMode === 'self' ? 'Select Event' : 'Select Event to Attach User'}
+                            </h3>
 
                             {loadingEvents ? (
                                 <div className="flex items-center justify-center py-12">
