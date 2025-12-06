@@ -6,6 +6,10 @@ import { useEffect, useState } from "react";
 import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import Link from 'next/link';
+import { SuperAdminUserManagement } from "@/components/super-admin-user-management";
+
+// Super admin user IDs
+const SUPER_ADMIN_IDS = [1, 2, 76, 133, 5, 52];
 
 interface UserEvent {
     id: number;
@@ -24,13 +28,18 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [userId, setUserId] = useState<number | null>(null);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
     useEffect(() => {
         const adminUser = localStorage.getItem('adminUser');
         if (adminUser) {
             try {
                 const userData = JSON.parse(adminUser);
-                setUserId(userData.user_id || userData.userId);
+                const currentUserId = userData.user_id || userData.userId;
+                setUserId(currentUserId);
+
+                // Check if user is a super admin
+                setIsSuperAdmin(SUPER_ADMIN_IDS.includes(currentUserId));
             } catch (error) {
                 console.error('Error parsing user data:', error);
                 setError('Failed to load user data');
@@ -86,13 +95,26 @@ export default function DashboardPage() {
     return (
         <div className="container py-6 sm:py-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-headline">
-                    My Events
-                </h1>
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-headline">
+                        {isSuperAdmin ? 'Super Admin Dashboard' : 'My Events'}
+                    </h1>
+                    {isSuperAdmin && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                            You have super admin privileges
+                        </p>
+                    )}
+                </div>
                 <p className="text-sm text-muted-foreground">
                     {events.length} {events.length === 1 ? 'event' : 'events'}
                 </p>
             </div>
+
+            {isSuperAdmin && (
+                <div className="mb-8">
+                    <SuperAdminUserManagement />
+                </div>
+            )}
 
             {events.length === 0 ? (
                 <Card>
