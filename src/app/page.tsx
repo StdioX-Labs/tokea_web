@@ -11,29 +11,8 @@ import {
 } from '@/components/ui/carousel';
 import { getEvents } from '@/services/event-service';
 import type { Event } from '@/lib/types';
-import Link from 'next/link';
-import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
-import { motion } from 'framer-motion';
-import { ShimmerButton } from '@/components/ui/shimmer-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CalendarX } from 'lucide-react';
-
-function EventCarouselSkeleton() {
-  return (
-    <div className="flex space-x-4">
-      {[...Array(3)].map((_, i) => (
-        <div key={i} className="min-w-0 shrink-0 grow-0 basis-full md:basis-1/2 lg:basis-1/3 p-1">
-          <Skeleton className="aspect-[2/3] w-full rounded-lg" />
-          <div className="p-4 space-y-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 function EventGridSkeleton() {
   return (
@@ -75,44 +54,8 @@ export default function Home() {
   const featuredEvents = allEvents.filter((event) => event.isFeatured).slice(0, 3);
   const upcomingEvents = allEvents;
 
-  const titleWords = [
-    { text: 'Experience' },
-    { text: 'the' },
-    { text: 'Vibe' },
-    { text: 'of' },
-    { text: 'Tokea', className: 'text-accent' },
-  ];
-
   return (
     <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="w-full py-20 md:py-32 lg:py-40 bg-primary text-primary-foreground">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center justify-center space-y-8 text-center">
-            <TypewriterEffectSmooth words={titleWords} />
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.5 }}
-              className="max-w-[700px] text-primary-foreground/80 md:text-xl text-balance"
-            >
-              From sun-drenched festivals to intimate evening concerts, find and
-              book tickets for the best events of the season.
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.8 }}
-            >
-              <Link href="#events">
-                <ShimmerButton size="lg">
-                  Browse Events
-                </ShimmerButton>
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-      </section>
 
       {/* Featured Events Carousel - Only render if there are featured events */}
        {!isLoading && featuredEvents.length > 0 && (
@@ -153,9 +96,7 @@ export default function Home() {
         className="w-full pb-12 md:pb-24 lg:pb-32 bg-muted/50 pt-12 md:pt-24"
       >
         <div className="container">
-          <h2 className="text-3xl font-bold tracking-tighter font-headline mb-8">
-            All Upcoming Events
-          </h2>
+
            {isLoading ? (
             <EventGridSkeleton />
            ) : upcomingEvents.length > 0 ? (
