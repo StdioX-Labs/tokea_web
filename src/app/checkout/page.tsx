@@ -8,15 +8,12 @@ import { Separator } from '@/components/ui/separator';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useState, useEffect, useCallback } from 'react';
-import type { Order } from '@/lib/types';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, CheckCircle2, ShieldCheck, Tag, CreditCard, Phone } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from '@/components/ui/progress';
+import { ArrowLeft, Loader2, CheckCircle2, ShieldCheck, Tag, CreditCard } from 'lucide-react';
 import { purchaseTickets, type PurchasePayload, checkPaymentStatus } from '@/services/event-service';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,7 +21,6 @@ const checkoutSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   phone: z.string().min(10, { message: 'Please enter a valid 10-digit phone number.' }).max(15, { message: 'Phone number is too long.' }),
-  mpesaPhone: z.string().min(10, { message: 'Please enter a valid 10-digit phone number.' }).max(15, { message: 'Phone number is too long.' }).optional().or(z.literal('')),
   couponCode: z.string().optional(),
   termsAccepted: z.boolean().refine((val) => val === true, {
     message: 'You must accept the terms and conditions to proceed.',
@@ -32,7 +28,6 @@ const checkoutSchema = z.object({
 });
 
 type PaymentStatus = 'idle' | 'processing' | 'awaitingVerification' | 'success' | 'error';
-type PaymentMethod = 'vaspro' | 'card';
 
 const formatPhoneNumberForApi = (phone: string | undefined): string => {
   if (!phone) return '';
@@ -56,8 +51,6 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('vaspro');
-  const [progress, setProgress] = useState(0);
   const [ticketGroup, setTicketGroup] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof checkoutSchema>>({
@@ -66,7 +59,6 @@ export default function CheckoutPage() {
       name: '',
       email: '',
       phone: '',
-      mpesaPhone: '',
       couponCode: '',
       termsAccepted: false,
     },
@@ -117,7 +109,6 @@ export default function CheckoutPage() {
         clearTimeout(timeoutTimer);
 
         setPaymentStatus('success');
-        setProgress(100);
 
         const values = form.getValues();
         const order = createOrder(
@@ -144,14 +135,12 @@ export default function CheckoutPage() {
   }, [paymentStatus, ticketGroup, handlePaymentSuccess, form, createOrder, toast]);
 
 
-  const startPaymentProcess = async (values: z.infer<typeof checkoutSchema>, channel: PaymentMethod) => {
+  const startPaymentProcess = async (values: z.infer<typeof checkoutSchema>) => {
     setPaymentStatus('processing');
-    setProgress(10);
     if (items.length === 0) return;
 
     const firstItem = items[0];
-    const rawPaymentPhoneNumber = channel === 'vaspro' && values.mpesaPhone ? values.mpesaPhone : values.phone;
-    const paymentPhoneNumber = formatPhoneNumberForApi(rawPaymentPhoneNumber);
+    const paymentPhoneNumber = formatPhoneNumberForApi(values.phone);
 
     try {
       // Check if all tickets are still valid before proceeding
@@ -172,12 +161,12 @@ export default function CheckoutPage() {
         throw new Error(`Some tickets are no longer available: ${invalidTickets.map(t => t.ticketTypeName).join(', ')}`);
       }
 
-      // Use different payment channel based on method
+      // Use card payment channel for Paystack
       const payload: PurchasePayload = {
         eventId: Number(firstItem.eventId),
         amountDisplayed: cartTotal,
         coupon_code: values.couponCode || "",
-        channel: channel === 'card' ? 'card' : 'vaspro',
+        channel: 'card',
         customer: {
           email: values.email,
           mobile_number: paymentPhoneNumber,
@@ -211,24 +200,18 @@ export default function CheckoutPage() {
       setTicketGroup(response.ticketGroup);
       console.log('Set ticketGroup to:', response.ticketGroup);
 
-      // For card payments, redirect to Paystack checkout
-      if (channel === 'card' && response.checkoutUrl) {
-        setProgress(100);
+      // Redirect to Paystack checkout
+      if (response.checkoutUrl) {
         setPaymentStatus('success');
         // Build the return URL with the ticket group
         const baseUrl = window.location.origin;
         const returnUrl = `${baseUrl}/orders/${response.ticketGroup}`;
-        // Append return URL as query parameter to Paystack checkout
-        const checkoutUrlWithReturn = `${response.checkoutUrl}${response.checkoutUrl.includes('?') ? '&' : '?'}callback_url=${encodeURIComponent(returnUrl)}`;
-        // Redirect to Paystack checkout URL
-        window.location.href = checkoutUrlWithReturn;
+        // Append return URL as query parameter to Paystack checkout and redirect
+        window.location.href = `${response.checkoutUrl}${response.checkoutUrl.includes('?') ? '&' : '?'}callback_url=${encodeURIComponent(returnUrl)}`;
         return;
       }
 
-      // For M-Pesa, set appropriate payment status
-      setProgress(95);
-      setPaymentStatus('awaitingVerification');
-      console.log('Payment status set to awaiting verification');
+      throw new Error('Payment checkout URL not provided');
 
     } catch (error) {
       console.error("Payment failed", error);
@@ -242,11 +225,10 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleSubmit = async (channel: PaymentMethod) => {
-    setPaymentMethod(channel);
+  const handleSubmit = async () => {
     const isValid = await form.trigger();
     if (isValid) {
-      startPaymentProcess(form.getValues(), channel);
+      startPaymentProcess(form.getValues());
     }
   };
 
@@ -277,11 +259,9 @@ export default function CheckoutPage() {
       {paymentStatus === 'success' && (
         <>
           <CheckCircle2 className="h-16 w-16 text-green-500" />
-          <h3 className="mt-4 text-xl font-semibold">{paymentMethod === 'card' ? 'Redirecting...' : 'Payment Successful!'}</h3>
+          <h3 className="mt-4 text-xl font-semibold">Redirecting...</h3>
           <p className="mt-2 text-muted-foreground">
-            {paymentMethod === 'card'
-              ? "Please wait while we redirect you to our secure payment partner."
-              : "Redirecting to your order confirmation..."}
+            Please wait while we redirect you to our secure payment partner.
           </p>
         </>
       )}
@@ -398,77 +378,29 @@ export default function CheckoutPage() {
                         </FormItem>
                       )}
                     />
-                    <Tabs defaultValue="vaspro" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="vaspro">
-                          <Phone className="w-4 h-4 mr-2" />
-                          Mobile Money
-                        </TabsTrigger>
-                        <TabsTrigger value="card">
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Card
-                        </TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="vaspro" className="pt-4 space-y-4">
-                        <div className="bg-gradient-to-br from-green-50 to-transparent dark:from-green-900/10 dark:to-transparent p-4 rounded-lg border border-green-100 dark:border-green-900/20">
-                          <div className="flex items-start">
-                            <div className="mr-3 mt-1">
-                              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                                <Phone className="w-4 h-4 text-green-600 dark:text-green-400" />
-                              </div>
-                            </div>
-                            <div>
-                              <h4 className="font-semibold mb-1 text-sm">M-Pesa Payment</h4>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">
-                                You will receive a push notification to your M-Pesa number to complete the payment.
-                              </p>
-                            </div>
+                    <div className="bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/10 dark:to-transparent p-4 rounded-lg border border-blue-100 dark:border-blue-900/20">
+                      <div className="flex items-start">
+                        <div className="mr-3 mt-1">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <CreditCard className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           </div>
                         </div>
-                        <FormField
-                          control={form.control}
-                          name="mpesaPhone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>M-Pesa Phone Number</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g. 0712345678" {...field} />
-                              </FormControl>
-                              <FormDescription>The number to pay with. If blank, your contact number will be used.</FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button onClick={() => handleSubmit('vaspro')} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                          Pay KES {cartTotal.toFixed(2)} with M-Pesa
-                        </Button>
-                      </TabsContent>
-                      <TabsContent value="card" className="pt-4 space-y-4">
-                        <div className="bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/10 dark:to-transparent p-4 rounded-lg border border-blue-100 dark:border-blue-900/20">
-                          <div className="flex items-start">
-                            <div className="mr-3 mt-1">
-                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                                <CreditCard className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                              </div>
-                            </div>
-                            <div>
-                              <h4 className="font-semibold mb-1 text-sm">Card Payment</h4>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">
-                                You will be redirected to a secure payment page to complete your transaction.
-                              </p>
-                            </div>
-                          </div>
+                        <div>
+                          <h4 className="font-semibold mb-1 text-sm">Secure Payment</h4>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            You will be redirected to our secure payment partner where you can pay with card or mobile money.
+                          </p>
                         </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                          <ShieldCheck className="w-4 h-4" />
-                          <span>Your payment information is secure and encrypted</span>
-                        </div>
-                        <Button onClick={() => handleSubmit('card')} size="lg" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Pay KES {cartTotal.toFixed(2)} with Card
-                        </Button>
-                      </TabsContent>
-                    </Tabs>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Your payment information is secure and encrypted</span>
+                    </div>
+                    <Button onClick={handleSubmit} size="lg" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Proceed to Payment - KES {cartTotal.toFixed(2)}
+                    </Button>
                   </div>
                 )}
               </CardContent>
