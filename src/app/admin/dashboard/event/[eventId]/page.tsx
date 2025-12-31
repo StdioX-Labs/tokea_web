@@ -49,6 +49,21 @@ interface TransactionBalances {
     grossFee: number;
 }
 
+interface SalesData {
+    gross: number;
+    commission: number;
+    net: number;
+    message: string;
+    status: boolean;
+}
+
+interface TicketSummary {
+    ticketCount: number;
+    ticketPrice: number;
+    totalSales: number;
+    ticketName: string;
+}
+
 interface EventTicket {
     id: number;
     ticketName: string;
@@ -94,7 +109,9 @@ export default function EventDetailsPage() {
 
     const [event, setEvent] = useState<EventData | null>(null);
     const [balances, setBalances] = useState<TransactionBalances | null>(null);
+    const [salesData, setSalesData] = useState<SalesData | null>(null);
     const [tickets, setTickets] = useState<EventTicket[]>([]);
+    const [ticketsSummary, setTicketsSummary] = useState<TicketSummary[]>([]);
     const [transactions, setTransactions] = useState<GLTransaction[]>([]);
     const [complementary, setComplementary] = useState<ComplementaryTicket[]>([]);
     const [loading, setLoading] = useState(true);
@@ -233,33 +250,34 @@ export default function EventDetailsPage() {
 
         const fetchBalances = async (eventCompanyId?: number, retryCount = 0): Promise<void> => {
             try {
-                const companyIdToUse = eventCompanyId || companyId || 54;
-                const balancesRes = await fetch(`/api/transaction-balances?companyId=${companyIdToUse}&eventId=${eventId}`);
+                const salesRes = await fetch(`/api/gl/helper/gl/event?eventId=${eventId}`);
 
-                console.log('Fetching balances with companyId:', companyIdToUse, 'Attempt:', retryCount + 1);
+                console.log('Fetching sales data for eventId:', eventId, 'Attempt:', retryCount + 1);
 
-                if (!balancesRes.ok) {
-                    throw new Error(`HTTP error! status: ${balancesRes.status}`);
+                if (!salesRes.ok) {
+                    throw new Error(`HTTP error! status: ${salesRes.status}`);
                 }
 
-                const balancesData = await balancesRes.json();
+                const salesDataResponse = await salesRes.json();
 
-                if (balancesData?.balances) {
-                    setBalances(balancesData.balances);
+                console.log('Sales data response:', salesDataResponse);
+
+                if (salesDataResponse?.status && salesDataResponse?.gross !== undefined) {
+                    setSalesData(salesDataResponse);
                     setErrors(prev => ({ ...prev, balances: null }));
                 } else {
-                    setErrors(prev => ({ ...prev, balances: 'No balance data available' }));
+                    setErrors(prev => ({ ...prev, balances: 'No sales data available' }));
                 }
             } catch (error) {
-                console.error('Error fetching balances:', error, 'Retry count:', retryCount);
+                console.error('Error fetching sales data:', error, 'Retry count:', retryCount);
 
                 if (retryCount < 5) {
                     // Retry after a delay (exponential backoff)
                     const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-                    console.log(`Retrying balances in ${delay}ms...`);
+                    console.log(`Retrying sales data in ${delay}ms...`);
                     setTimeout(() => fetchBalances(eventCompanyId, retryCount + 1), delay);
                 } else {
-                    setErrors(prev => ({ ...prev, balances: 'Failed to load balances after 5 attempts' }));
+                    setErrors(prev => ({ ...prev, balances: 'Failed to load sales data after 5 attempts' }));
                     setLoadingStates(prev => ({ ...prev, balances: false }));
                 }
                 return;
@@ -269,21 +287,39 @@ export default function EventDetailsPage() {
 
         const fetchTickets = async (retryCount = 0): Promise<void> => {
             try {
-                const ticketsRes = await fetch(`/api/event-tickets?eventId=${eventId}`);
+                // Fetch ticket summary for display
+                const ticketsSummaryRes = await fetch(`/api/gl/helper/gl/tickets?eventId=${eventId}`);
+
+                // Fetch full ticket data for modals
+                const ticketsFullRes = await fetch(`/api/event-tickets?eventId=${eventId}`);
 
                 console.log('Fetching tickets, Attempt:', retryCount + 1);
 
-                if (!ticketsRes.ok) {
-                    throw new Error(`HTTP error! status: ${ticketsRes.status}`);
+                if (!ticketsSummaryRes.ok) {
+                    throw new Error(`HTTP error! status: ${ticketsSummaryRes.status}`);
                 }
 
-                const ticketsData = await ticketsRes.json();
+                const ticketsSummaryData = await ticketsSummaryRes.json();
+                console.log('Tickets summary response:', ticketsSummaryData);
 
-                if (ticketsData?.ticket) {
-                    setTickets(ticketsData.ticket);
+                if (ticketsSummaryData?.status && ticketsSummaryData?.summary) {
+                    setTicketsSummary(ticketsSummaryData.summary);
                     setErrors(prev => ({ ...prev, tickets: null }));
                 } else {
                     setErrors(prev => ({ ...prev, tickets: 'No tickets available' }));
+                }
+
+                // Also fetch full ticket data for modal functionality
+                if (ticketsFullRes.ok) {
+                    const ticketsFullData = await ticketsFullRes.json();
+                    console.log('Full tickets response:', ticketsFullData);
+                    if (ticketsFullData?.ticket) {
+                        setTickets(ticketsFullData.ticket);
+                    } else {
+                        console.warn('No ticket data in full tickets response');
+                    }
+                } else {
+                    console.error('Failed to fetch full tickets:', ticketsFullRes.status, ticketsFullRes.statusText);
                 }
             } catch (error) {
                 console.error('Error fetching tickets:', error, 'Retry count:', retryCount);
@@ -562,7 +598,7 @@ export default function EventDetailsPage() {
                             </div>
                         </CardContent>
                     </Card>
-                ) : balances ? (
+                ) : salesData ? (
                     <>
                         <Card>
                             <CardHeader className="pb-3">
@@ -573,7 +609,7 @@ export default function EventDetailsPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-3xl font-bold">
-                                    {event.currency} {balances.grossFee.toLocaleString()}
+                                    {event.currency} {salesData.gross.toLocaleString()}
                                 </div>
                             </CardContent>
                         </Card>
@@ -581,12 +617,12 @@ export default function EventDetailsPage() {
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                                     <TrendingUp className="h-4 w-4" />
-                                    Available Funds
+                                    Available Funds (Net)
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="text-3xl font-bold">
-                                    {event.currency} {balances.availableFunds.toLocaleString()}
+                                    {event.currency} {salesData.net.toLocaleString()}
                                 </div>
                             </CardContent>
                         </Card>
@@ -594,12 +630,12 @@ export default function EventDetailsPage() {
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                                     <Ticket className="h-4 w-4" />
-                                    Platform Fee
+                                    Platform Fee ({salesData.commission}%)
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="text-3xl font-bold">
-                                    {event.currency} {balances.platform_fee.toLocaleString()}
+                                    {event.currency} {((salesData.gross * salesData.commission) / 100).toLocaleString()}
                                 </div>
                             </CardContent>
                         </Card>
@@ -607,11 +643,11 @@ export default function EventDetailsPage() {
                 ) : null}
             </div>
 
-            {/* Tickets Available */}
+            {/* Ticket Sales Summary */}
             <Card className="mb-6">
                 <CardHeader>
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <CardTitle>Tickets Available</CardTitle>
+                        <CardTitle>Ticket Sales Summary</CardTitle>
                         <Button onClick={handleAddTicket} className="w-full sm:w-auto">
                             <PlusCircle className="h-4 w-4 mr-2" />
                             Add Ticket
@@ -628,45 +664,57 @@ export default function EventDetailsPage() {
                         <div className="text-sm text-muted-foreground text-center py-8">
                             {errors.tickets}
                         </div>
-                    ) : tickets.length > 0 ? (
+                    ) : ticketsSummary.length > 0 ? (
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Ticket Name</TableHead>
                                         <TableHead>Price</TableHead>
-                                        <TableHead>Available</TableHead>
-                                        <TableHead>Status</TableHead>
+                                        <TableHead className="font-semibold">Tickets Sold</TableHead>
+                                        <TableHead>Total Sales</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {tickets.map((ticket) => (
-                                        <TableRow key={ticket.id}>
-                                            <TableCell className="font-medium">{ticket.ticketName}</TableCell>
-                                            <TableCell>{event.currency} {ticket.ticketPrice.toLocaleString()}</TableCell>
-                                            <TableCell>{ticket.quantityAvailable}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={ticket.isActive ? "default" : "secondary"}>
-                                                    {ticket.ticketStatus}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon">
-                                                            <MoreHorizontal className="h-4 w-4" />
+                                    {ticketsSummary.map((ticket, index) => {
+                                        const fullTicket = tickets.find(t =>
+                                            t.ticketName.trim().toLowerCase() === ticket.ticketName.trim().toLowerCase()
+                                        );
+
+                                        if (!fullTicket) {
+                                            console.log('No matching ticket found for:', ticket.ticketName, 'Available tickets:', tickets.map(t => t.ticketName));
+                                        }
+
+                                        return (
+                                            <TableRow key={index}>
+                                                <TableCell className="font-medium">{ticket.ticketName}</TableCell>
+                                                <TableCell>{event.currency} {ticket.ticketPrice.toLocaleString()}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="default" className="font-semibold">
+                                                        {ticket.ticketCount} Sold
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="font-semibold">
+                                                    {event.currency} {ticket.totalSales.toLocaleString()}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {fullTicket ? (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleEditTicket(fullTicket)}
+                                                        >
+                                                            <Edit className="h-4 w-4 mr-1" />
+                                                            Edit
                                                         </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => handleEditTicket(ticket)}>
-                                                            <Edit className="mr-2 h-4 w-4" /> Edit
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">No data</span>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>

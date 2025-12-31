@@ -57,6 +57,16 @@ export async function requestOtpAction(email: string) {
 
     const data: OtpResponse = await response.json();
 
+    // ======== TEST MODE: Display OTP in console ========
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔐 OTP GENERATED FOR TESTING');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📧 Email:', email);
+    console.log('🔢 OTP Code:', data.otp);
+    console.log('⏰ Timestamp:', new Date().toLocaleString());
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    // ===================================================
+
     // Store OTP and user data server-side for validation (expires in 5 minutes)
     otpStore.set(email, {
       otp: data.otp,
@@ -85,15 +95,30 @@ export async function requestOtpAction(email: string) {
 
 export async function verifyOtpAction(otp: string, email: string) {
   try {
+    // ======== TEST MODE: Display OTP verification attempt ========
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 OTP VERIFICATION ATTEMPT');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📧 Email:', email);
+    console.log('🔢 Entered OTP:', otp);
+    console.log('⏰ Time:', new Date().toLocaleString());
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    // ==============================================================
+
     // Get stored OTP data
     const storedData = otpStore.get(email);
 
     if (!storedData) {
+      console.log('❌ OTP not found in store for:', email);
       return {
         success: false,
         message: 'OTP expired or not found. Please request a new one.'
       };
     }
+
+    console.log('✅ Stored OTP found:', storedData.otp);
+    console.log('🔄 Comparing:', otp, '===', storedData.otp, '?', otp === storedData.otp);
+
 
     // Check if OTP is expired (5 minutes)
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
@@ -107,6 +132,8 @@ export async function verifyOtpAction(otp: string, email: string) {
 
     // Validate the OTP
     if (storedData.otp === otp) {
+      console.log('✅ OTP VERIFIED SUCCESSFULLY!');
+
       // Clear the OTP after successful validation
       otpStore.delete(email);
 
@@ -132,6 +159,7 @@ export async function verifyOtpAction(otp: string, email: string) {
         user: storedData.user
       };
     } else {
+      console.log('❌ OTP VERIFICATION FAILED - Invalid OTP');
       return {
         success: false,
         message: 'Invalid OTP. Please try again.'
